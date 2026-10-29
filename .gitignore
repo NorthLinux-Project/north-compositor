@@ -1,0 +1,27 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+out/
+
+# Compilation database & language servers
+compile_commands.json
+.cache/
+.clangd/
+
+# Editor & IDE artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+
+# Core dumps & logs
+core
+core.*
+vgcore.*
+*.log
+
+# Runtime directories
+/tmp/north-runtime-*
