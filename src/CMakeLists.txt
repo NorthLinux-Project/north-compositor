@@ -27,6 +27,9 @@ add_library(north_core STATIC
   output/output.c
   shell/view.c
   shell/xdg.c
+  shell/layer.c
+  shell/lock.c
+  xwayland/xwayland.c
   decor/cairo_buffer.c
   decor/titlebar.c
   decor/decoration.c
@@ -51,6 +54,9 @@ target_link_libraries(north_core
     PkgConfig::LIBSEAT
     PkgConfig::LIBUDEV
     PkgConfig::VULKAN
+    PkgConfig::XCB
+    PkgConfig::XCB_ICCCM
+    PkgConfig::XCB_EWMH
     project_warnings
     project_sanitizers
 )

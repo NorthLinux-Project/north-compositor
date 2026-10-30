@@ -1,10 +1,11 @@
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
+#include "util/geom.h"
+
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_scene.h>
-#include "util/geom.h"
 
 struct north_server;
 
@@ -13,6 +14,9 @@ struct north_output {
     struct north_server *server;
     struct wlr_output *wlr_output;
     struct wlr_scene_output *scene_output;
+
+    NorthBox usable_area;
+    struct wl_list layer_surfaces;
 
     struct wl_listener frame;
     struct wl_listener request_state;

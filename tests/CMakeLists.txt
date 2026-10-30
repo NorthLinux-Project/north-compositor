@@ -63,6 +63,31 @@ add_unity_test(test_xdg_toplevel integration/test_xdg_toplevel.c
   DEPENDS north-compositor
 )
 
+add_unity_test(test_layer_shell integration/test_layer_shell.c
+  LIBRARIES north::wayland_client north_protocols
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_session_lock integration/test_session_lock.c
+  LIBRARIES north::wayland_client north_protocols
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_presentation integration/test_presentation.c
+  LIBRARIES north::wayland_client north_protocols
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_xwayland integration/test_xwayland.c
+  LIBRARIES PkgConfig::XCB PkgConfig::XCB_ICCCM
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_tiling integration/test_tiling.c
+  LIBRARIES north::wayland_client north_protocols north::xkbcommon
+  DEPENDS north-compositor
+)
+
 add_unity_test(test_config_reload integration/test_config_reload.c
   LIBRARIES north_util
   DEPENDS north-compositor

@@ -1,27 +1,34 @@
 #include "input/keybind.h"
+
 #include <ctype.h>
 #include <string.h>
 #include <strings.h>
 
-static const char *skip_whitespace(const char *s) {
+static const char *skip_whitespace(const char *s)
+{
     while (*s && (*s == ' ' || *s == '\t' || *s == '\r')) {
         s++;
     }
     return s;
 }
 
-static char *arena_strdup(Arena *arena, const char *src) {
-    if (!src) return NULL;
+static char *arena_strdup(Arena *arena, const char *src)
+{
+    if (!src)
+        return NULL;
     size_t len = strlen(src);
     char *dst = (char *)arena_alloc(arena, len + 1, sizeof(char));
-    if (!dst) return NULL;
+    if (!dst)
+        return NULL;
     memcpy(dst, src, len + 1);
     return dst;
 }
 
-NorthKeybindResult keybind_parse(Arena *arena, const char *spec, const char *action_str) {
+NorthKeybindResult keybind_parse(Arena *arena, const char *spec, const char *action_str)
+{
     if (!spec || !action_str) {
-        return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_INVALID_ARGUMENT, "NULL spec or action_str"));
+        return RESULT_ERR(NorthKeybind,
+                          ERROR_CREATE(ERR_INVALID_ARGUMENT, "NULL spec or action_str"));
     }
 
     NorthKeybind bind = {0};
@@ -59,19 +66,22 @@ NorthKeybindResult keybind_parse(Arena *arena, const char *spec, const char *act
                        strncasecmp(token_start, "Mod1", token_len) == 0) {
                 bind.modifiers |= NORTH_MOD_ALT;
             } else {
-                return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_INVALID_ARGUMENT, "unknown modifier in keybind"));
+                return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_INVALID_ARGUMENT,
+                                                             "unknown modifier in keybind"));
             }
         } else {
             char name_buf[64];
             if (token_len >= sizeof(name_buf)) {
-                return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_INVALID_ARGUMENT, "keysym name too long"));
+                return RESULT_ERR(NorthKeybind,
+                                  ERROR_CREATE(ERR_INVALID_ARGUMENT, "keysym name too long"));
             }
             memcpy(name_buf, token_start, token_len);
             name_buf[token_len] = '\0';
 
             xkb_keysym_t sym = xkb_keysym_from_name(name_buf, XKB_KEYSYM_CASE_INSENSITIVE);
             if (sym == XKB_KEY_NoSymbol) {
-                return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_NOT_FOUND, "unrecognized keysym name"));
+                return RESULT_ERR(NorthKeybind,
+                                  ERROR_CREATE(ERR_NOT_FOUND, "unrecognized keysym name"));
             }
             bind.keysym = sym;
             break;
@@ -95,6 +105,22 @@ NorthKeybindResult keybind_parse(Arena *arena, const char *spec, const char *act
         bind.action = NORTH_KEYBIND_ACTION_FULLSCREEN;
     } else if (strcasecmp(act, "minimize") == 0) {
         bind.action = NORTH_KEYBIND_ACTION_MINIMIZE;
+    } else if (strcasecmp(act, "snap_left") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_SNAP_LEFT;
+    } else if (strcasecmp(act, "snap_right") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_SNAP_RIGHT;
+    } else if (strcasecmp(act, "snap_top") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_MAXIMIZE;
+    } else if (strcasecmp(act, "snap_top_left") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_SNAP_TOP_LEFT;
+    } else if (strcasecmp(act, "snap_top_right") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_SNAP_TOP_RIGHT;
+    } else if (strcasecmp(act, "snap_bottom_left") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_SNAP_BOTTOM_LEFT;
+    } else if (strcasecmp(act, "snap_bottom_right") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_SNAP_BOTTOM_RIGHT;
+    } else if (strcasecmp(act, "restore") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_RESTORE;
     } else if (strcasecmp(act, "focus_next") == 0) {
         bind.action = NORTH_KEYBIND_ACTION_FOCUS_NEXT;
     } else if (strcasecmp(act, "focus_prev") == 0) {
@@ -104,7 +130,8 @@ NorthKeybindResult keybind_parse(Arena *arena, const char *spec, const char *act
     } else if (strcasecmp(act, "exit") == 0) {
         bind.action = NORTH_KEYBIND_ACTION_EXIT;
     } else {
-        return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_INVALID_ARGUMENT, "unknown keybind action"));
+        return RESULT_ERR(NorthKeybind,
+                          ERROR_CREATE(ERR_INVALID_ARGUMENT, "unknown keybind action"));
     }
 
     return RESULT_OK(NorthKeybind, bind);

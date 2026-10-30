@@ -1,9 +1,9 @@
 #ifndef ARENA_H
 #define ARENA_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #define ARENA_DEFAULT_ALIGNMENT sizeof(void *)
 
@@ -30,13 +30,12 @@ void arena_temp_end(ArenaTemp temp);
 
 ArenaTemp get_scratch(Arena **conflicts, size_t conflict_count);
 
-#define arena_push_type(arena, Type) \
-    ((Type *)arena_alloc((arena), sizeof(Type), _Alignof(Type)))
+#define arena_push_type(arena, Type) ((Type *)arena_alloc((arena), sizeof(Type), _Alignof(Type)))
 
-#define arena_push_array(arena, Type, count) \
+#define arena_push_array(arena, Type, count)                                                       \
     ((Type *)arena_alloc((arena), sizeof(Type) * (count), _Alignof(Type)))
 
-#define arena_push_array_zero(arena, Type, count) \
+#define arena_push_array_zero(arena, Type, count)                                                  \
     ((Type *)arena_alloc_zero((arena), sizeof(Type) * (count), _Alignof(Type)))
 
 #endif

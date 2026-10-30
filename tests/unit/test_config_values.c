@@ -1,10 +1,11 @@
-#include "unity.h"
 #include "config/config.h"
+#include "unity.h"
 
 void setUp(void) {}
 void tearDown(void) {}
 
-void test_color_parsing_valid(void) {
+void test_color_parsing_valid(void)
+{
     NorthColorResult c1 = config_parse_color("#ffffff");
     TEST_ASSERT_TRUE(c1.ok);
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.0f, c1.value.r);
@@ -20,7 +21,8 @@ void test_color_parsing_valid(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.02f, 0.5f, c2.value.a);
 }
 
-void test_color_parsing_invalid(void) {
+void test_color_parsing_invalid(void)
+{
     NorthColorResult c1 = config_parse_color("#fff");
     TEST_ASSERT_FALSE(c1.ok);
 
@@ -31,7 +33,8 @@ void test_color_parsing_invalid(void) {
     TEST_ASSERT_FALSE(c3.ok);
 }
 
-void test_default_config_creation(void) {
+void test_default_config_creation(void)
+{
     NorthConfig *cfg = config_create_default();
     TEST_ASSERT_NOT_NULL(cfg);
     TEST_ASSERT_EQUAL_STRING("us", cfg->keyboard.layout);
@@ -43,7 +46,8 @@ void test_default_config_creation(void) {
     config_destroy(cfg);
 }
 
-int main(void) {
+int main(void)
+{
     UNITY_BEGIN();
     RUN_TEST(test_color_parsing_valid);
     RUN_TEST(test_color_parsing_invalid);

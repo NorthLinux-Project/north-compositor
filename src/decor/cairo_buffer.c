@@ -1,8 +1,10 @@
 #include "decor/cairo_buffer.h"
+
 #include <drm_fourcc.h>
 #include <stdlib.h>
 
-static void cairo_buffer_destroy(struct wlr_buffer *wlr_buffer) {
+static void cairo_buffer_destroy(struct wlr_buffer *wlr_buffer)
+{
     struct north_cairo_buffer *buf = wl_container_of(wlr_buffer, buf, base);
     if (buf->cairo) {
         cairo_destroy(buf->cairo);
@@ -14,9 +16,9 @@ static void cairo_buffer_destroy(struct wlr_buffer *wlr_buffer) {
     free(buf);
 }
 
-static bool cairo_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer,
-                                               uint32_t flags, void **data,
-                                               uint32_t *format, size_t *stride) {
+static bool cairo_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer, uint32_t flags,
+                                               void **data, uint32_t *format, size_t *stride)
+{
     (void)flags;
     struct north_cairo_buffer *buf = wl_container_of(wlr_buffer, buf, base);
     *data = cairo_image_surface_get_data(buf->surface);
@@ -25,9 +27,7 @@ static bool cairo_buffer_begin_data_ptr_access(struct wlr_buffer *wlr_buffer,
     return true;
 }
 
-static void cairo_buffer_end_data_ptr_access(struct wlr_buffer *wlr_buffer) {
-    (void)wlr_buffer;
-}
+static void cairo_buffer_end_data_ptr_access(struct wlr_buffer *wlr_buffer) { (void)wlr_buffer; }
 
 static const struct wlr_buffer_impl cairo_buffer_impl = {
     .destroy = cairo_buffer_destroy,
@@ -35,7 +35,8 @@ static const struct wlr_buffer_impl cairo_buffer_impl = {
     .end_data_ptr_access = cairo_buffer_end_data_ptr_access,
 };
 
-struct north_cairo_buffer *north_cairo_buffer_create(int width, int height) {
+struct north_cairo_buffer *north_cairo_buffer_create(int width, int height)
+{
     if (width <= 0 || height <= 0) {
         return NULL;
     }

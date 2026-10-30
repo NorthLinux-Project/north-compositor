@@ -145,6 +145,9 @@ pkg_check_modules(FONTCONFIG REQUIRED IMPORTED_TARGET fontconfig)
 pkg_check_modules(LIBSEAT REQUIRED IMPORTED_TARGET libseat)
 pkg_check_modules(LIBUDEV REQUIRED IMPORTED_TARGET libudev)
 pkg_check_modules(VULKAN REQUIRED IMPORTED_TARGET vulkan)
+pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
+pkg_check_modules(XCB_ICCCM REQUIRED IMPORTED_TARGET xcb-icccm)
+pkg_check_modules(XCB_EWMH REQUIRED IMPORTED_TARGET xcb-ewmh)
 
 # Unity submodule target for testing
 if(BUILD_TESTING)

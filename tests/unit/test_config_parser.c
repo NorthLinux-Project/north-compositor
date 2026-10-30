@@ -1,25 +1,22 @@
-#include "unity.h"
 #include "config/parser.h"
+#include "unity.h"
+
 #include <string.h>
 
 static Arena test_arena;
 
-void setUp(void) {
-    test_arena = arena_create(1024 * 64);
-}
+void setUp(void) { test_arena = arena_create(1024 * 64); }
 
-void tearDown(void) {
-    arena_destroy(&test_arena);
-}
+void tearDown(void) { arena_destroy(&test_arena); }
 
-void test_parser_basic_sections_and_keys(void) {
-    const char *text =
-        "[input:keyboard]\n"
-        "layout = us\n"
-        "repeat_rate = 25\n"
-        "\n"
-        "[decoration]\n"
-        "font = Inter 10\n";
+void test_parser_basic_sections_and_keys(void)
+{
+    const char *text = "[input:keyboard]\n"
+                       "layout = us\n"
+                       "repeat_rate = 25\n"
+                       "\n"
+                       "[decoration]\n"
+                       "font = Inter 10\n";
 
     ConfigDocResult res = config_parse(&test_arena, text, strlen(text));
     TEST_ASSERT_TRUE(res.ok);
@@ -38,15 +35,15 @@ void test_parser_basic_sections_and_keys(void) {
     TEST_ASSERT_EQUAL_STRING("Inter 10", res.value.entries[2].value);
 }
 
-void test_parser_comments_and_whitespace(void) {
-    const char *text =
-        "# Top comment\n"
-        "  ; Another comment\n"
-        "   [section]   \n"
-        "   key   =    value   \n"
-        "\n"
-        "# Mid comment\n"
-        "quoted = \"hello world\"\n";
+void test_parser_comments_and_whitespace(void)
+{
+    const char *text = "# Top comment\n"
+                       "  ; Another comment\n"
+                       "   [section]   \n"
+                       "   key   =    value   \n"
+                       "\n"
+                       "# Mid comment\n"
+                       "quoted = \"hello world\"\n";
 
     ConfigDocResult res = config_parse(&test_arena, text, strlen(text));
     TEST_ASSERT_TRUE(res.ok);
@@ -60,7 +57,8 @@ void test_parser_comments_and_whitespace(void) {
     TEST_ASSERT_EQUAL_STRING("hello world", res.value.entries[1].value);
 }
 
-void test_parser_invalid_syntax_errors(void) {
+void test_parser_invalid_syntax_errors(void)
+{
     const char *unclosed = "[unclosed_section\nkey = val\n";
     ConfigDocResult res1 = config_parse(&test_arena, unclosed, strlen(unclosed));
     TEST_ASSERT_FALSE(res1.ok);
@@ -74,13 +72,15 @@ void test_parser_invalid_syntax_errors(void) {
     TEST_ASSERT_FALSE(res3.ok);
 }
 
-void test_parser_empty_input(void) {
+void test_parser_empty_input(void)
+{
     ConfigDocResult res = config_parse(&test_arena, "", 0);
     TEST_ASSERT_TRUE(res.ok);
     TEST_ASSERT_EQUAL_size_t(0, res.value.count);
 }
 
-int main(void) {
+int main(void)
+{
     UNITY_BEGIN();
     RUN_TEST(test_parser_basic_sections_and_keys);
     RUN_TEST(test_parser_comments_and_whitespace);

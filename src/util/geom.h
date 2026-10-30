@@ -15,18 +15,22 @@ typedef struct {
     int height;
 } NorthBox;
 
-static inline bool north_box_contains_point(const NorthBox *box, int x, int y) {
-    if (!box) return false;
-    return x >= box->x && x < box->x + box->width &&
-           y >= box->y && y < box->y + box->height;
+static inline bool north_box_contains_point(const NorthBox *box, int x, int y)
+{
+    if (!box)
+        return false;
+    return x >= box->x && x < box->x + box->width && y >= box->y && y < box->y + box->height;
 }
 
-static inline bool north_box_empty(const NorthBox *box) {
+static inline bool north_box_empty(const NorthBox *box)
+{
     return !box || box->width <= 0 || box->height <= 0;
 }
 
-static inline bool north_box_intersection(NorthBox *dest, const NorthBox *a, const NorthBox *b) {
-    if (!dest || !a || !b) return false;
+static inline bool north_box_intersection(NorthBox *dest, const NorthBox *a, const NorthBox *b)
+{
+    if (!dest || !a || !b)
+        return false;
 
     int x1 = a->x > b->x ? a->x : b->x;
     int y1 = a->y > b->y ? a->y : b->y;

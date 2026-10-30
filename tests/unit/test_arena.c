@@ -4,7 +4,8 @@
 void setUp(void) {}
 void tearDown(void) {}
 
-void test_arena_creation_and_basic_allocation(void) {
+void test_arena_creation_and_basic_allocation(void)
+{
     Arena arena = arena_create(1024);
     TEST_ASSERT_NOT_NULL(arena.buffer);
     TEST_ASSERT_EQUAL_size_t(1024, arena.capacity);
@@ -22,7 +23,8 @@ void test_arena_creation_and_basic_allocation(void) {
     TEST_ASSERT_NULL(arena.buffer);
 }
 
-void test_arena_alignment_guarantees(void) {
+void test_arena_alignment_guarantees(void)
+{
     Arena arena = arena_create(1024);
 
     arena_alloc(&arena, 3, 1);
@@ -37,7 +39,8 @@ void test_arena_alignment_guarantees(void) {
     arena_destroy(&arena);
 }
 
-void test_arena_out_of_memory_returns_null(void) {
+void test_arena_out_of_memory_returns_null(void)
+{
     Arena arena = arena_create(128);
     void *ptr1 = arena_alloc(&arena, 100, 8);
     TEST_ASSERT_NOT_NULL(ptr1);
@@ -48,7 +51,8 @@ void test_arena_out_of_memory_returns_null(void) {
     arena_destroy(&arena);
 }
 
-void test_arena_temp_scope_rollback(void) {
+void test_arena_temp_scope_rollback(void)
+{
     Arena arena = arena_create(1024);
     arena_alloc(&arena, 100, 8);
     size_t offset_before = arena.offset;
@@ -64,11 +68,12 @@ void test_arena_temp_scope_rollback(void) {
     arena_destroy(&arena);
 }
 
-void test_scratch_arena_pool_and_conflict(void) {
+void test_scratch_arena_pool_and_conflict(void)
+{
     ArenaTemp scratch1 = get_scratch(NULL, 0);
     TEST_ASSERT_NOT_NULL(scratch1.arena);
 
-    Arena *conflicts[] = { scratch1.arena };
+    Arena *conflicts[] = {scratch1.arena};
     ArenaTemp scratch2 = get_scratch(conflicts, 1);
     TEST_ASSERT_NOT_NULL(scratch2.arena);
     TEST_ASSERT_TRUE(scratch1.arena != scratch2.arena);
@@ -77,7 +82,8 @@ void test_scratch_arena_pool_and_conflict(void) {
     arena_temp_end(scratch1);
 }
 
-int main(void) {
+int main(void)
+{
     UNITY_BEGIN();
     RUN_TEST(test_arena_creation_and_basic_allocation);
     RUN_TEST(test_arena_alignment_guarantees);

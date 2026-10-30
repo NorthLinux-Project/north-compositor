@@ -1,9 +1,10 @@
 #ifndef CONFIG_PARSER_H
 #define CONFIG_PARSER_H
 
-#include <stddef.h>
 #include "util/arena.h"
 #include "util/error.h"
+
+#include <stddef.h>
 
 typedef struct {
     const char *section;

@@ -1,10 +1,13 @@
 #include "decor/decoration.h"
-#include "shell/view.h"
+
 #include "core/server.h"
+#include "shell/view.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-void decoration_init(struct north_decoration *decor, struct north_view *view) {
+void decoration_init(struct north_decoration *decor, struct north_view *view)
+{
     memset(decor, 0, sizeof(*decor));
     decor->view = view;
     decor->tree = wlr_scene_tree_create(view->tree);
@@ -12,7 +15,7 @@ void decoration_init(struct north_decoration *decor, struct north_view *view) {
     decor->active = false;
     decor->scale = 1.0f;
 
-    const float color[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
+    const float color[4] = {0.2f, 0.2f, 0.2f, 1.0f};
     decor->border_top = wlr_scene_rect_create(decor->tree, 0, 0, color);
     decor->border_bottom = wlr_scene_rect_create(decor->tree, 0, 0, color);
     decor->border_left = wlr_scene_rect_create(decor->tree, 0, 0, color);
@@ -27,7 +30,8 @@ void decoration_init(struct north_decoration *decor, struct north_view *view) {
     decor->titlebar_node->node.data = (void *)(uintptr_t)NORTH_DECOR_PART_TITLEBAR;
 }
 
-void decoration_finish(struct north_decoration *decor) {
+void decoration_finish(struct north_decoration *decor)
+{
     if (decor->rendered_titlebar) {
         wlr_buffer_drop(&decor->rendered_titlebar->base);
         decor->rendered_titlebar = NULL;
@@ -38,12 +42,14 @@ void decoration_finish(struct north_decoration *decor) {
     }
 }
 
-void decoration_set_enabled(struct north_decoration *decor, bool enabled) {
+void decoration_set_enabled(struct north_decoration *decor, bool enabled)
+{
     decor->enabled = enabled;
     wlr_scene_node_set_enabled(&decor->tree->node, enabled);
 }
 
-void decoration_set_title(struct north_decoration *decor, const char *title) {
+void decoration_set_title(struct north_decoration *decor, const char *title)
+{
     if (decor->title) {
         free(decor->title);
         decor->title = NULL;
@@ -54,12 +60,14 @@ void decoration_set_title(struct north_decoration *decor, const char *title) {
     decoration_update(decor, decor->width, decor->height, decor->scale);
 }
 
-void decoration_set_active(struct north_decoration *decor, bool active) {
+void decoration_set_active(struct north_decoration *decor, bool active)
+{
     decor->active = active;
     decoration_update(decor, decor->width, decor->height, decor->scale);
 }
 
-void decoration_update(struct north_decoration *decor, int width, int height, float scale) {
+void decoration_update(struct north_decoration *decor, int width, int height, float scale)
+{
     if (width <= 0 || height <= 0) {
         return;
     }
@@ -79,8 +87,8 @@ void decoration_update(struct north_decoration *decor, int width, int height, fl
         decor->rendered_titlebar = NULL;
     }
 
-    decor->rendered_titlebar = render_titlebar(width, tb_h, decor->scale,
-                                               decor->title, decor->active, maximized, dcfg);
+    decor->rendered_titlebar =
+        render_titlebar(width, tb_h, decor->scale, decor->title, decor->active, maximized, dcfg);
     if (decor->rendered_titlebar) {
         wlr_scene_buffer_set_buffer(decor->titlebar_node, &decor->rendered_titlebar->base);
         wlr_scene_buffer_set_dest_size(decor->titlebar_node, width, tb_h);
@@ -88,7 +96,7 @@ void decoration_update(struct north_decoration *decor, int width, int height, fl
     }
 
     NorthColor border_col = decor->active ? dcfg->active_border : dcfg->inactive_border;
-    const float col[4] = { border_col.r, border_col.g, border_col.b, border_col.a };
+    const float col[4] = {border_col.r, border_col.g, border_col.b, border_col.a};
 
     wlr_scene_rect_set_color(decor->border_top, col);
     wlr_scene_rect_set_size(decor->border_top, width + 2 * bw, bw);
@@ -107,7 +115,9 @@ void decoration_update(struct north_decoration *decor, int width, int height, fl
     wlr_scene_node_set_position(&decor->border_right->node, width, -tb_h);
 }
 
-enum north_decor_part decoration_find_part(struct north_decoration *decor, struct wlr_scene_node *node, double lx, double ly) {
+enum north_decor_part decoration_find_part(struct north_decoration *decor,
+                                           struct wlr_scene_node *node, double lx, double ly)
+{
     (void)ly;
     if (!decor || !decor->enabled || !node) {
         return NORTH_DECOR_PART_NONE;
@@ -130,10 +140,14 @@ enum north_decor_part decoration_find_part(struct north_decoration *decor, struc
         return NORTH_DECOR_PART_TITLEBAR;
     }
 
-    if (node == &decor->border_top->node) return NORTH_DECOR_PART_BORDER_TOP;
-    if (node == &decor->border_bottom->node) return NORTH_DECOR_PART_BORDER_BOTTOM;
-    if (node == &decor->border_left->node) return NORTH_DECOR_PART_BORDER_LEFT;
-    if (node == &decor->border_right->node) return NORTH_DECOR_PART_BORDER_RIGHT;
+    if (node == &decor->border_top->node)
+        return NORTH_DECOR_PART_BORDER_TOP;
+    if (node == &decor->border_bottom->node)
+        return NORTH_DECOR_PART_BORDER_BOTTOM;
+    if (node == &decor->border_left->node)
+        return NORTH_DECOR_PART_BORDER_LEFT;
+    if (node == &decor->border_right->node)
+        return NORTH_DECOR_PART_BORDER_RIGHT;
 
     return NORTH_DECOR_PART_NONE;
 }

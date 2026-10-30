@@ -1,10 +1,13 @@
 #include "input/seat.h"
+
 #include "core/server.h"
 #include "shell/view.h"
 #include "util/log.h"
+
 #include <wlr/backend/libinput.h>
 
-void seat_init(struct north_seat *seat, struct north_server *server) {
+void seat_init(struct north_seat *seat, struct north_server *server)
+{
     seat->server = server;
     seat->cursor_mode = NORTH_CURSOR_PASSTHROUGH;
 
@@ -29,7 +32,8 @@ void seat_init(struct north_seat *seat, struct north_server *server) {
     const char *size_str = getenv("XCURSOR_SIZE");
     if (size_str) {
         int sz = atoi(size_str);
-        if (sz > 0) xcursor_size = sz;
+        if (sz > 0)
+            xcursor_size = sz;
     }
 
     seat->cursor_mgr = wlr_xcursor_manager_create(xcursor_theme, xcursor_size);
@@ -40,7 +44,8 @@ void seat_init(struct north_seat *seat, struct north_server *server) {
     seat_init_pointer(seat);
 }
 
-void seat_finish(struct north_seat *seat) {
+void seat_finish(struct north_seat *seat)
+{
     wl_list_remove(&seat->cursor_motion.link);
     wl_list_remove(&seat->cursor_motion_absolute.link);
     wl_list_remove(&seat->cursor_button.link);
@@ -57,7 +62,8 @@ void seat_finish(struct north_seat *seat) {
     }
 }
 
-void seat_add_device(struct north_seat *seat, struct wlr_input_device *device) {
+void seat_add_device(struct north_seat *seat, struct wlr_input_device *device)
+{
     uint32_t caps = 0;
     if (device->type == WLR_INPUT_DEVICE_KEYBOARD) {
         struct wlr_keyboard *kb = wlr_keyboard_from_input_device(device);
@@ -70,16 +76,15 @@ void seat_add_device(struct north_seat *seat, struct wlr_input_device *device) {
         if (wlr_input_device_is_libinput(device)) {
             struct libinput_device *libinput_dev = wlr_libinput_get_device_handle(device);
             if (libinput_device_config_tap_get_finger_count(libinput_dev) > 0) {
-                libinput_device_config_tap_set_enabled(
-                    libinput_dev,
-                    seat->server->config->touchpad.tap ? LIBINPUT_CONFIG_TAP_ENABLED : LIBINPUT_CONFIG_TAP_DISABLED);
+                libinput_device_config_tap_set_enabled(libinput_dev,
+                                                       seat->server->config->touchpad.tap
+                                                           ? LIBINPUT_CONFIG_TAP_ENABLED
+                                                           : LIBINPUT_CONFIG_TAP_DISABLED);
                 libinput_device_config_scroll_set_natural_scroll_enabled(
-                    libinput_dev,
-                    seat->server->config->touchpad.natural_scroll ? 1 : 0);
+                    libinput_dev, seat->server->config->touchpad.natural_scroll ? 1 : 0);
             } else {
                 libinput_device_config_scroll_set_natural_scroll_enabled(
-                    libinput_dev,
-                    seat->server->config->pointer.natural_scroll ? 1 : 0);
+                    libinput_dev, seat->server->config->pointer.natural_scroll ? 1 : 0);
             }
         }
     } else if (device->type == WLR_INPUT_DEVICE_TOUCH) {
@@ -91,27 +96,25 @@ void seat_add_device(struct north_seat *seat, struct wlr_input_device *device) {
     wlr_seat_set_capabilities(seat->wlr_seat, current_caps | caps);
 }
 
-void seat_begin_move(struct north_seat *seat, struct north_view *view) {
-    if (!view || view->state == VIEW_FULLSCREEN) return;
-
-    if (view->state == VIEW_MAXIMIZED) {
-        view_set_maximized(view, false);
-        int new_x = (int)seat->cursor->x - view->geometry.width / 2;
-        int new_y = (int)seat->cursor->y - 14;
-        view_set_position(view, new_x, new_y);
-    }
+void seat_begin_move(struct north_seat *seat, struct north_view *view)
+{
+    if (!view || view->state == VIEW_FULLSCREEN)
+        return;
 
     seat->cursor_mode = NORTH_CURSOR_MOVE;
     seat->grabbed_view = view;
     seat->grab_x = seat->cursor->x;
     seat->grab_y = seat->cursor->y;
     seat->grab_box = view->geometry;
+    seat->snap_suppressed = (view->state == VIEW_MAXIMIZED || view->state == VIEW_SNAPPED);
 
     wlr_cursor_set_xcursor(seat->cursor, seat->cursor_mgr, "grabbing");
 }
 
-void seat_begin_resize(struct north_seat *seat, struct north_view *view, uint32_t edges) {
-    if (!view || view->state == VIEW_FULLSCREEN || view->state == VIEW_MAXIMIZED) return;
+void seat_begin_resize(struct north_seat *seat, struct north_view *view, uint32_t edges)
+{
+    if (!view || view->state == VIEW_FULLSCREEN || view->state == VIEW_MAXIMIZED)
+        return;
 
     seat->cursor_mode = NORTH_CURSOR_RESIZE;
     seat->grabbed_view = view;

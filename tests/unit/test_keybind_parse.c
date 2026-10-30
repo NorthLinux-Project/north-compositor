@@ -1,17 +1,14 @@
-#include "unity.h"
 #include "input/keybind.h"
+#include "unity.h"
 
 static Arena test_arena;
 
-void setUp(void) {
-    test_arena = arena_create(1024 * 32);
-}
+void setUp(void) { test_arena = arena_create(1024 * 32); }
 
-void tearDown(void) {
-    arena_destroy(&test_arena);
-}
+void tearDown(void) { arena_destroy(&test_arena); }
 
-void test_keybind_parse_modifiers_and_keysym(void) {
+void test_keybind_parse_modifiers_and_keysym(void)
+{
     NorthKeybindResult r1 = keybind_parse(&test_arena, "Super+Return", "exec foot");
     TEST_ASSERT_TRUE(r1.ok);
     TEST_ASSERT_EQUAL_UINT32(NORTH_MOD_SUPER, r1.value.modifiers);
@@ -32,7 +29,8 @@ void test_keybind_parse_modifiers_and_keysym(void) {
     TEST_ASSERT_EQUAL_INT(NORTH_KEYBIND_ACTION_FOCUS_NEXT, r3.value.action);
 }
 
-void test_keybind_parse_invalid(void) {
+void test_keybind_parse_invalid(void)
+{
     NorthKeybindResult r1 = keybind_parse(&test_arena, "UnknownMod+Q", "close");
     TEST_ASSERT_FALSE(r1.ok);
 
@@ -43,7 +41,8 @@ void test_keybind_parse_invalid(void) {
     TEST_ASSERT_FALSE(r3.ok);
 }
 
-int main(void) {
+int main(void)
+{
     UNITY_BEGIN();
     RUN_TEST(test_keybind_parse_modifiers_and_keysym);
     RUN_TEST(test_keybind_parse_invalid);

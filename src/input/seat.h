@@ -1,20 +1,17 @@
 #ifndef SEAT_H
 #define SEAT_H
 
+#include "util/geom.h"
+
 #include <wayland-server-core.h>
-#include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_cursor.h>
-#include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_input_device.h>
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_pointer.h>
-#include "util/geom.h"
+#include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_xcursor_manager.h>
 
-enum north_cursor_mode {
-    NORTH_CURSOR_PASSTHROUGH = 0,
-    NORTH_CURSOR_MOVE,
-    NORTH_CURSOR_RESIZE
-};
+enum north_cursor_mode { NORTH_CURSOR_PASSTHROUGH = 0, NORTH_CURSOR_MOVE, NORTH_CURSOR_RESIZE };
 
 struct north_server;
 struct north_view;
@@ -31,6 +28,7 @@ struct north_seat {
     double grab_y;
     NorthBox grab_box;
     uint32_t resize_edges;
+    bool snap_suppressed;
 
     uint32_t last_click_time;
     struct north_view *last_click_view;

@@ -1,12 +1,11 @@
 #include "decor/decoration.h"
-#include "decor/cairo_buffer.h"
-#include "config/config.h"
-#include <pango/pangocairo.h>
-#include <string.h>
 
-struct north_cairo_buffer *render_titlebar(int width, int height, float scale,
-                                           const char *title, bool active, bool maximized,
-                                           const NorthDecorConfig *decor_cfg) {
+#include <pango/pangocairo.h>
+
+struct north_cairo_buffer *render_titlebar(int width, int height, float scale, const char *title,
+                                           bool active, bool maximized,
+                                           const NorthDecorConfig *decor_cfg)
+{
     if (width <= 0 || height <= 0) {
         return NULL;
     }
@@ -35,7 +34,8 @@ struct north_cairo_buffer *render_titlebar(int width, int height, float scale,
     int text_max_width = width - btns_total_width - 16;
     if (text_max_width > 0) {
         PangoLayout *layout = pango_cairo_create_layout(cr);
-        PangoFontDescription *desc = pango_font_description_from_string(decor_cfg->font ? decor_cfg->font : "Sans 10");
+        PangoFontDescription *desc =
+            pango_font_description_from_string(decor_cfg->font ? decor_cfg->font : "Sans 10");
         pango_layout_set_font_description(layout, desc);
         pango_font_description_free(desc);
 

@@ -1,10 +1,11 @@
 #ifndef DECORATION_H
 #define DECORATION_H
 
+#include "config/config.h"
+#include "decor/cairo_buffer.h"
+
 #include <stdbool.h>
 #include <wlr/types/wlr_scene.h>
-#include "decor/cairo_buffer.h"
-#include "config/config.h"
 
 enum north_decor_part {
     NORTH_DECOR_PART_NONE = 0,
@@ -47,10 +48,11 @@ void decoration_set_active(struct north_decoration *decor, bool active);
 void decoration_set_title(struct north_decoration *decor, const char *title);
 void decoration_set_enabled(struct north_decoration *decor, bool enabled);
 
-enum north_decor_part decoration_find_part(struct north_decoration *decor, struct wlr_scene_node *node, double lx, double ly);
+enum north_decor_part decoration_find_part(struct north_decoration *decor,
+                                           struct wlr_scene_node *node, double lx, double ly);
 
-struct north_cairo_buffer *render_titlebar(int width, int height, float scale,
-                                           const char *title, bool active, bool maximized,
+struct north_cairo_buffer *render_titlebar(int width, int height, float scale, const char *title,
+                                           bool active, bool maximized,
                                            const NorthDecorConfig *decor_cfg);
 
 #endif

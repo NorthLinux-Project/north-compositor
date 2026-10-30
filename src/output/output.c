@@ -1,30 +1,90 @@
 #include "output/output.h"
+
 #include "core/server.h"
 #include "shell/placement.h"
+#include "shell/view.h"
 #include "util/log.h"
-#include <wlr/backend/wayland.h>
+
 #include <stdlib.h>
 #include <time.h>
+#include <wlr/backend/wayland.h>
+#include <wlr/types/wlr_tearing_control_v1.h>
 
-static void output_frame(struct wl_listener *listener, void *data) {
+static void output_frame(struct wl_listener *listener, void *data)
+{
     (void)data;
     struct north_output *output = wl_container_of(listener, output, frame);
     struct wlr_scene_output *scene_output = output->scene_output;
 
-    wlr_scene_output_commit(scene_output, NULL);
+    if (!wlr_scene_output_needs_frame(scene_output)) {
+        return;
+    }
+
+    struct wlr_output_state state;
+    wlr_output_state_init(&state);
+    if (!wlr_scene_output_build_state(scene_output, &state, NULL)) {
+        wlr_output_state_finish(&state);
+        return;
+    }
+
+    bool allow_tearing = false;
+    if (output->server->tearing_control) {
+        struct north_view *view;
+        wl_list_for_each(view, &output->server->views, link)
+        {
+            if (view->state == VIEW_FULLSCREEN && view->surface) {
+                struct wlr_box out_box;
+                wlr_output_layout_get_box(output->server->output_layout, output->wlr_output,
+                                          &out_box);
+                struct wlr_box view_box = {
+                    .x = view->geometry.x,
+                    .y = view->geometry.y,
+                    .width = view->geometry.width,
+                    .height = view->geometry.height,
+                };
+                struct wlr_box intersection;
+                if (wlr_box_intersection(&intersection, &out_box, &view_box)) {
+                    enum wp_tearing_control_v1_presentation_hint hint =
+                        wlr_tearing_control_manager_v1_surface_hint_from_surface(
+                            output->server->tearing_control, view->surface);
+                    if (hint == WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC) {
+                        allow_tearing = true;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    if (allow_tearing) {
+        state.tearing_page_flip = true;
+        if (!wlr_output_test_state(output->wlr_output, &state)) {
+            state.tearing_page_flip = false;
+        }
+    }
+
+    if (!wlr_output_commit_state(output->wlr_output, &state)) {
+        if (state.tearing_page_flip) {
+            state.tearing_page_flip = false;
+            wlr_output_commit_state(output->wlr_output, &state);
+        }
+    }
+    wlr_output_state_finish(&state);
 
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
     wlr_scene_output_send_frame_done(scene_output, &now);
 }
 
-static void output_request_state(struct wl_listener *listener, void *data) {
+static void output_request_state(struct wl_listener *listener, void *data)
+{
     struct north_output *output = wl_container_of(listener, output, request_state);
     const struct wlr_output_event_request_state *event = data;
     wlr_output_commit_state(output->wlr_output, event->state);
 }
 
-static void output_destroy(struct wl_listener *listener, void *data) {
+static void output_destroy(struct wl_listener *listener, void *data)
+{
     (void)data;
     struct north_output *output = wl_container_of(listener, output, destroy);
     struct north_server *server = output->server;
@@ -44,7 +104,8 @@ static void output_destroy(struct wl_listener *listener, void *data) {
     }
 }
 
-void output_handle_new(struct north_server *server, struct wlr_output *wlr_output) {
+void output_handle_new(struct north_server *server, struct wlr_output *wlr_output)
+{
     if (!wlr_output_init_render(wlr_output, server->allocator, server->renderer)) {
         LOG_ERROR("Failed to initialize renderer for output '%s'", wlr_output->name);
         return;
@@ -57,6 +118,7 @@ void output_handle_new(struct north_server *server, struct wlr_output *wlr_outpu
     }
     output->server = server;
     output->wlr_output = wlr_output;
+    wl_list_init(&output->layer_surfaces);
 
     output->scene_output = wlr_scene_output_create(server->scene, wlr_output);
     if (!output->scene_output) {
@@ -111,32 +173,32 @@ void output_handle_new(struct north_server *server, struct wlr_output *wlr_outpu
         wlr_output_layout_add_auto(server->output_layout, wlr_output);
     }
 
-    LOG_INFO("Output '%s' configured: mode %dx%d, scale %.2f",
-             wlr_output->name, wlr_output->width, wlr_output->height, scale);
+    struct wlr_box lbox;
+    wlr_output_layout_get_box(server->output_layout, wlr_output, &lbox);
+    output->usable_area = (NorthBox){lbox.x, lbox.y, lbox.width, lbox.height};
+
+    LOG_INFO("Output '%s' configured: mode %dx%d, scale %.2f", wlr_output->name, wlr_output->width,
+             wlr_output->height, scale);
 }
 
-NorthBox output_get_usable_box(struct north_output *output) {
+NorthBox output_get_usable_box(struct north_output *output)
+{
     if (!output || !output->wlr_output) {
         return (NorthBox){0};
     }
-    struct wlr_box box;
-    wlr_output_layout_get_box(output->server->output_layout, output->wlr_output, &box);
-    return (NorthBox){
-        .x = box.x,
-        .y = box.y,
-        .width = box.width,
-        .height = box.height
-    };
+    return output->usable_area;
 }
 
-struct north_output *output_at(struct north_server *server, double lx, double ly) {
+struct north_output *output_at(struct north_server *server, double lx, double ly)
+{
     struct wlr_output *wlr_out = wlr_output_layout_output_at(server->output_layout, lx, ly);
     if (!wlr_out) {
         return NULL;
     }
 
     struct north_output *output;
-    wl_list_for_each(output, &server->outputs, link) {
+    wl_list_for_each(output, &server->outputs, link)
+    {
         if (output->wlr_output == wlr_out) {
             return output;
         }

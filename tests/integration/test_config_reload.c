@@ -1,14 +1,16 @@
 #define _DEFAULT_SOURCE
 #include "unity.h"
-#include <unistd.h>
+
 #include <signal.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-void setUp(void) {
+void setUp(void)
+{
     const char *runtime_dir = getenv("XDG_RUNTIME_DIR");
     if (!runtime_dir || access(runtime_dir, W_OK) != 0) {
         char fallback[256];
@@ -19,15 +21,15 @@ void setUp(void) {
 }
 void tearDown(void) {}
 
-void test_config_live_reload_cycle(void) {
+void test_config_live_reload_cycle(void)
+{
     char cfg_path[] = "/tmp/north_test_config_XXXXXX.conf";
     int fd = mkstemps(cfg_path, 5);
     TEST_ASSERT_TRUE(fd >= 0);
 
-    const char *initial_cfg =
-        "[decoration]\n"
-        "titlebar_height = 30\n"
-        "active_title = #112233ff\n";
+    const char *initial_cfg = "[decoration]\n"
+                              "titlebar_height = 30\n"
+                              "active_title = #112233ff\n";
     write(fd, initial_cfg, strlen(initial_cfg));
     close(fd);
 
@@ -47,9 +49,8 @@ void test_config_live_reload_cycle(void) {
         char ready_str[32];
         snprintf(ready_str, sizeof(ready_str), "%d", pipe_fds[1]);
 
-        execl(NORTH_COMPOSITOR_BIN, "north-compositor",
-              "-c", cfg_path,
-              "-R", ready_str, (char *)NULL);
+        execl(NORTH_COMPOSITOR_BIN, "north-compositor", "-c", cfg_path, "-R", ready_str,
+              (char *)NULL);
         _exit(1);
     }
 
@@ -63,10 +64,9 @@ void test_config_live_reload_cycle(void) {
 
     FILE *f = fopen(cfg_path, "w");
     TEST_ASSERT_NOT_NULL(f);
-    const char *updated_cfg =
-        "[decoration]\n"
-        "titlebar_height = 36\n"
-        "active_title = #aabbccff\n";
+    const char *updated_cfg = "[decoration]\n"
+                              "titlebar_height = 36\n"
+                              "active_title = #aabbccff\n";
     fputs(updated_cfg, f);
     fclose(f);
 
@@ -89,7 +89,8 @@ void test_config_live_reload_cycle(void) {
     unlink(cfg_path);
 }
 
-int main(void) {
+int main(void)
+{
     UNITY_BEGIN();
     RUN_TEST(test_config_live_reload_cycle);
     return UNITY_END();

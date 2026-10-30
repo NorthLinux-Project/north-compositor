@@ -1,11 +1,11 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdarg.h>
 
 typedef enum {
     LOG_LEVEL_TRACE = 0,
@@ -44,7 +44,8 @@ void log_sink_ring_buffer(const LogRecord *record, void *user_data);
 void log_dump_ring_buffer(FILE *stream);
 
 void log_emit(LogLevel level, const char *file, int line, const char *func, const char *fmt, ...);
-void log_emitv(LogLevel level, const char *file, int line, const char *func, const char *fmt, va_list args);
+void log_emitv(LogLevel level, const char *file, int line, const char *func, const char *fmt,
+               va_list args);
 
 #if LOG_MIN_LEVEL <= 0
 #define LOG_TRACE(...) log_emit(LOG_LEVEL_TRACE, __FILE__, __LINE__, __func__, __VA_ARGS__)

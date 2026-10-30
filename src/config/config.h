@@ -1,11 +1,12 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <stdbool.h>
-#include <stddef.h>
+#include "input/keybind.h"
 #include "util/arena.h"
 #include "util/error.h"
-#include "input/keybind.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 typedef struct {
     float r;
@@ -51,12 +52,21 @@ typedef struct {
     NorthColor inactive_border;
 } NorthDecorConfig;
 
+typedef struct {
+    bool enabled;
+    int threshold;
+    NorthColor preview_color;
+    NorthColor preview_border_color;
+    int preview_border_width;
+} NorthSnapConfig;
+
 typedef struct north_config {
     Arena arena;
     NorthKeyboardConfig keyboard;
     NorthPointerConfig pointer;
     NorthPointerConfig touchpad;
     NorthDecorConfig decor;
+    NorthSnapConfig snap;
 
     NorthOutputConfig *outputs;
     size_t output_count;
