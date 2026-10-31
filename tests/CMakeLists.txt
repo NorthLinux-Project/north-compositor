@@ -92,3 +92,9 @@ add_unity_test(test_config_reload integration/test_config_reload.c
   LIBRARIES north_util
   DEPENDS north-compositor
 )
+
+add_unity_test(test_workspaces integration/test_workspaces.c
+  LIBRARIES north::wayland_client north_protocols north::xkbcommon
+  DEPENDS north-compositor
+)
+

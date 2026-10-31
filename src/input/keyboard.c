@@ -1,5 +1,7 @@
 #include "core/server.h"
+#include "output/output.h"
 #include "shell/view.h"
+#include "shell/workspace.h"
 #include "util/log.h"
 
 #include <stdlib.h>
@@ -15,6 +17,28 @@ struct north_keyboard {
     struct wl_listener key;
     struct wl_listener destroy;
 };
+
+static struct north_output *get_focused_output(struct north_server *server)
+{
+    struct north_output *out = NULL;
+    if (server->seat.cursor) {
+        out = output_at(server, server->seat.cursor->x, server->seat.cursor->y);
+    }
+    if (!out && !wl_list_empty(&server->views)) {
+        struct north_view *v;
+        wl_list_for_each(v, &server->views, link)
+        {
+            if (v->workspace && v->workspace->output) {
+                out = v->workspace->output;
+                break;
+            }
+        }
+    }
+    if (!out && !wl_list_empty(&server->outputs)) {
+        out = wl_container_of(server->outputs.next, out, link);
+    }
+    return out;
+}
 
 static void execute_command(const char *cmd)
 {
@@ -36,8 +60,13 @@ static bool handle_keybinding(struct north_server *server, uint32_t modifiers, x
         NorthKeybind *b = &cfg->binds[i];
         if (b->modifiers == modifiers && b->keysym == sym) {
             struct north_view *focused = NULL;
-            if (!wl_list_empty(&server->views)) {
-                focused = wl_container_of(server->views.next, focused, link);
+            struct north_view *v;
+            wl_list_for_each(v, &server->views, link)
+            {
+                if (workspace_view_is_visible(v)) {
+                    focused = v;
+                    break;
+                }
             }
 
             switch (b->action) {
@@ -95,23 +124,52 @@ static bool handle_keybinding(struct north_server *server, uint32_t modifiers, x
                 }
                 return true;
             case NORTH_KEYBIND_ACTION_FOCUS_NEXT:
-                if (focused && focused->link.next != &server->views) {
-                    struct north_view *next = wl_container_of(focused->link.next, next, link);
-                    view_focus(next);
-                } else if (!wl_list_empty(&server->views)) {
-                    struct north_view *first = wl_container_of(server->views.next, first, link);
-                    view_focus(first);
-                }
+                view_focus_next(server);
                 return true;
             case NORTH_KEYBIND_ACTION_FOCUS_PREV:
-                if (focused && focused->link.prev != &server->views) {
-                    struct north_view *prev = wl_container_of(focused->link.prev, prev, link);
-                    view_focus(prev);
-                } else if (!wl_list_empty(&server->views)) {
-                    struct north_view *last = wl_container_of(server->views.prev, last, link);
-                    view_focus(last);
+                view_focus_prev(server);
+                return true;
+            case NORTH_KEYBIND_ACTION_WORKSPACE: {
+                if (!b->argument) {
+                    return true;
+                }
+                int target_idx = atoi(b->argument) - 1;
+                if (target_idx < 0) {
+                    return true;
+                }
+                struct north_output *out = get_focused_output(server);
+                if (out) {
+                    workspace_switch(out, target_idx);
                 }
                 return true;
+            }
+            case NORTH_KEYBIND_ACTION_MOVE_TO_WORKSPACE: {
+                if (!b->argument) {
+                    return true;
+                }
+                int target_idx = atoi(b->argument) - 1;
+                if (target_idx < 0) {
+                    return true;
+                }
+                if (focused) {
+                    workspace_move_view(focused, target_idx);
+                }
+                return true;
+            }
+            case NORTH_KEYBIND_ACTION_WORKSPACE_NEXT: {
+                struct north_output *out = get_focused_output(server);
+                if (out) {
+                    workspace_cycle(out, 1);
+                }
+                return true;
+            }
+            case NORTH_KEYBIND_ACTION_WORKSPACE_PREV: {
+                struct north_output *out = get_focused_output(server);
+                if (out) {
+                    workspace_cycle(out, -1);
+                }
+                return true;
+            }
             case NORTH_KEYBIND_ACTION_EXIT:
                 LOG_INFO("Exit requested via keybinding");
                 wl_display_terminate(server->display);

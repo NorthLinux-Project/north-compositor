@@ -3,6 +3,7 @@
 #include "core/server.h"
 #include "output/output.h"
 #include "shell/view.h"
+#include "shell/workspace.h"
 #include "util/log.h"
 
 #include <libgen.h>
@@ -32,6 +33,12 @@ static int handle_inotify_event(int fd, uint32_t mask, void *data)
     NorthConfig *new_cfg = res.value;
     NorthConfig *old_cfg = watch->server->config;
     watch->server->config = new_cfg;
+
+    struct north_output *out;
+    wl_list_for_each(out, &watch->server->outputs, link)
+    {
+        workspace_resize_count(out, new_cfg->workspaces.count);
+    }
 
     struct north_view *view;
     wl_list_for_each(view, &watch->server->views, link)

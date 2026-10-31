@@ -222,6 +222,6 @@ int main(int argc, char *argv[])
         config_watch_finish(&watch);
     }
     server_finish(&server);
-    config_destroy(config);
+    config_destroy(server.config);
     return 0;
 }

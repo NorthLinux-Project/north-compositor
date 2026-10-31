@@ -4,6 +4,7 @@
 #include "output/output.h"
 #include "shell/placement.h"
 #include "shell/view.h"
+#include "shell/workspace.h"
 #include "util/log.h"
 
 #include <stdlib.h>
@@ -134,6 +135,11 @@ static void xdg_handle_map(struct wl_listener *listener, void *data)
     struct north_output *out = output_at(server, server->seat.cursor->x, server->seat.cursor->y);
     if (!out && !wl_list_empty(&server->outputs)) {
         out = wl_container_of(server->outputs.next, out, link);
+    }
+
+    if (out && out->active_workspace) {
+        view->workspace = out->active_workspace;
+        wlr_scene_node_reparent(&view->tree->node, out->active_workspace->tree);
     }
 
     NorthBox usable = out ? output_get_usable_box(out) : (NorthBox){0, 0, 1920, 1080};

@@ -3,6 +3,7 @@
 #include "core/server.h"
 #include "shell/placement.h"
 #include "shell/view.h"
+#include "shell/workspace.h"
 #include "util/log.h"
 
 #include <stdlib.h>
@@ -92,6 +93,31 @@ static void output_destroy(struct wl_listener *listener, void *data)
 
     LOG_INFO("Output '%s' disconnected", output->wlr_output->name);
 
+    struct north_output *target_output = NULL;
+    struct north_output *other;
+    wl_list_for_each(other, &server->outputs, link)
+    {
+        if (other != output) {
+            target_output = other;
+            break;
+        }
+    }
+
+    if (target_output) {
+        workspace_migrate_views_to_output(output, target_output);
+    } else {
+        struct north_view *view;
+        wl_list_for_each(view, &server->views, link)
+        {
+            if (view->workspace && view->workspace->output == output) {
+                view->workspace = NULL;
+                wlr_scene_node_reparent(&view->tree->node, server->layers.views);
+            }
+        }
+    }
+
+    workspace_output_finish(output);
+
     wl_list_remove(&output->frame.link);
     wl_list_remove(&output->request_state.link);
     wl_list_remove(&output->destroy.link);
@@ -176,6 +202,12 @@ void output_handle_new(struct north_server *server, struct wlr_output *wlr_outpu
     struct wlr_box lbox;
     wlr_output_layout_get_box(server->output_layout, wlr_output, &lbox);
     output->usable_area = (NorthBox){lbox.x, lbox.y, lbox.width, lbox.height};
+
+    int ws_count = 9;
+    if (server->config && server->config->workspaces.count > 0) {
+        ws_count = server->config->workspaces.count;
+    }
+    workspace_output_init(output, ws_count);
 
     LOG_INFO("Output '%s' configured: mode %dx%d, scale %.2f", wlr_output->name, wlr_output->width,
              wlr_output->height, scale);

@@ -1,6 +1,9 @@
 #include "input/keybind.h"
 
 #include <ctype.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 
@@ -125,6 +128,44 @@ NorthKeybindResult keybind_parse(Arena *arena, const char *spec, const char *act
         bind.action = NORTH_KEYBIND_ACTION_FOCUS_NEXT;
     } else if (strcasecmp(act, "focus_prev") == 0) {
         bind.action = NORTH_KEYBIND_ACTION_FOCUS_PREV;
+    } else if (strcasecmp(act, "workspace_next") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_WORKSPACE_NEXT;
+    } else if (strcasecmp(act, "workspace_prev") == 0) {
+        bind.action = NORTH_KEYBIND_ACTION_WORKSPACE_PREV;
+    } else if (strncasecmp(act, "workspace", 9) == 0 &&
+               (act[9] == ' ' || act[9] == '\t' || act[9] == '\0')) {
+        bind.action = NORTH_KEYBIND_ACTION_WORKSPACE;
+        const char *arg = skip_whitespace(act + 9);
+        char *endptr = NULL;
+        long n = strtol(arg, &endptr, 10);
+        if (endptr == arg || *skip_whitespace(endptr) != '\0' || n < 1 || n > INT_MAX) {
+            return RESULT_ERR(NorthKeybind,
+                              ERROR_CREATE(ERR_INVALID_ARGUMENT, "invalid workspace index"));
+        }
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%ld", n);
+        bind.argument = arena_strdup(arena, buf);
+        if (!bind.argument) {
+            return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_OUT_OF_MEMORY,
+                                                         "failed allocating keybind argument"));
+        }
+    } else if (strncasecmp(act, "move_to_workspace", 17) == 0 &&
+               (act[17] == ' ' || act[17] == '\t' || act[17] == '\0')) {
+        bind.action = NORTH_KEYBIND_ACTION_MOVE_TO_WORKSPACE;
+        const char *arg = skip_whitespace(act + 17);
+        char *endptr = NULL;
+        long n = strtol(arg, &endptr, 10);
+        if (endptr == arg || *skip_whitespace(endptr) != '\0' || n < 1 || n > INT_MAX) {
+            return RESULT_ERR(NorthKeybind,
+                              ERROR_CREATE(ERR_INVALID_ARGUMENT, "invalid workspace index"));
+        }
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%ld", n);
+        bind.argument = arena_strdup(arena, buf);
+        if (!bind.argument) {
+            return RESULT_ERR(NorthKeybind, ERROR_CREATE(ERR_OUT_OF_MEMORY,
+                                                         "failed allocating keybind argument"));
+        }
     } else if (strcasecmp(act, "reload") == 0) {
         bind.action = NORTH_KEYBIND_ACTION_RELOAD;
     } else if (strcasecmp(act, "exit") == 0) {

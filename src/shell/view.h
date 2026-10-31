@@ -26,6 +26,7 @@ enum north_view_type {
 
 struct north_server;
 struct north_view;
+struct north_workspace;
 
 struct north_view_impl {
     void (*get_geometry)(struct north_view *view, struct wlr_box *box);
@@ -41,6 +42,7 @@ struct north_view {
     struct north_server *server;
     enum north_view_type type;
     const struct north_view_impl *impl;
+    struct north_workspace *workspace;
 
     union {
         struct wlr_xdg_toplevel *xdg_toplevel;
@@ -97,6 +99,10 @@ struct north_view *view_create_xwayland(struct north_server *server,
 void view_destroy(struct north_view *view);
 
 void view_focus(struct north_view *view);
+void view_clear_focus(struct north_server *server);
+void view_focus_top_visible(struct north_server *server);
+void view_focus_next(struct north_server *server);
+void view_focus_prev(struct north_server *server);
 void view_set_position(struct north_view *view, int x, int y);
 void view_set_size(struct north_view *view, int width, int height);
 void view_set_maximized(struct north_view *view, bool maximized);

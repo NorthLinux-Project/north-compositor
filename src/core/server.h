@@ -15,6 +15,7 @@
 #include <wlr/types/wlr_cursor_shape_v1.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_ext_image_copy_capture_v1.h>
+#include <wlr/types/wlr_ext_workspace_v1.h>
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_idle_inhibit_v1.h>
@@ -88,6 +89,7 @@ struct north_server {
     struct wlr_relative_pointer_manager_v1 *relative_pointer_manager;
     struct wlr_screencopy_manager_v1 *screencopy_manager;
     struct wlr_ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
+    struct wlr_ext_workspace_manager_v1 *ext_workspace_manager;
     struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
     struct wlr_pointer_constraint_v1 *active_constraint;
     struct wlr_xwayland *xwayland;
@@ -120,6 +122,7 @@ struct north_server {
     struct wl_listener backend_destroy;
     struct wl_listener output_mgr_apply;
     struct wl_listener output_mgr_test;
+    struct wl_listener workspace_commit;
 };
 
 BoolResult server_init(struct north_server *server, NorthConfig *config);

@@ -2,6 +2,7 @@
 
 #include "core/server.h"
 #include "output/output.h"
+#include "shell/workspace.h"
 #include "util/log.h"
 
 #include <stdlib.h>
@@ -52,12 +53,12 @@ void view_handle_unmap(struct wl_listener *listener, void *data)
         wlr_foreign_toplevel_handle_v1_set_activated(view->toplevel_handle, false);
     }
 
-    if (!wl_list_empty(&view->server->views)) {
-        struct north_view *next_view = wl_container_of(view->server->views.next, next_view, link);
-        view_focus(next_view);
-    } else {
-        wlr_seat_keyboard_clear_focus(view->server->seat.wlr_seat);
+    if (view->tree && view->server) {
+        wlr_scene_node_reparent(&view->tree->node, view->server->layers.views);
     }
+
+    view->workspace = NULL;
+    view_focus_top_visible(view->server);
 }
 
 void view_handle_destroy(struct wl_listener *listener, void *data)
@@ -235,6 +236,128 @@ void view_focus(struct north_view *view)
     }
 }
 
+void view_clear_focus(struct north_server *server)
+{
+    if (!server) {
+        return;
+    }
+    struct wlr_seat *seat = server->seat.wlr_seat;
+    struct wlr_surface *prev_surface = seat->keyboard_state.focused_surface;
+
+    if (prev_surface) {
+        struct north_view *prev_view;
+        wl_list_for_each(prev_view, &server->views, link)
+        {
+            if (prev_view->surface == prev_surface) {
+                if (prev_view->impl && prev_view->impl->set_activated) {
+                    prev_view->impl->set_activated(prev_view, false);
+                }
+                decoration_set_active(&prev_view->decor, false);
+                if (prev_view->toplevel_handle) {
+                    wlr_foreign_toplevel_handle_v1_set_activated(prev_view->toplevel_handle, false);
+                }
+                break;
+            }
+        }
+    }
+
+    wlr_seat_keyboard_clear_focus(seat);
+}
+
+void view_focus_top_visible(struct north_server *server)
+{
+    if (!server) {
+        return;
+    }
+    struct north_view *v;
+    wl_list_for_each(v, &server->views, link)
+    {
+        if (workspace_view_is_visible(v)) {
+            view_focus(v);
+            return;
+        }
+    }
+    view_clear_focus(server);
+}
+
+void view_focus_next(struct north_server *server)
+{
+    if (!server || wl_list_empty(&server->views)) {
+        return;
+    }
+
+    struct north_view *focused = NULL;
+    struct wlr_surface *focused_surface = server->seat.wlr_seat->keyboard_state.focused_surface;
+    if (focused_surface) {
+        struct north_view *v;
+        wl_list_for_each(v, &server->views, link)
+        {
+            if (v->surface == focused_surface) {
+                focused = v;
+                break;
+            }
+        }
+    }
+
+    if (!focused) {
+        view_focus_top_visible(server);
+        return;
+    }
+
+    struct wl_list *curr = focused->link.next;
+    while (curr != &focused->link) {
+        if (curr == &server->views) {
+            curr = curr->next;
+            continue;
+        }
+        struct north_view *v = wl_container_of(curr, v, link);
+        if (workspace_view_is_visible(v)) {
+            view_focus(v);
+            return;
+        }
+        curr = curr->next;
+    }
+}
+
+void view_focus_prev(struct north_server *server)
+{
+    if (!server || wl_list_empty(&server->views)) {
+        return;
+    }
+
+    struct north_view *focused = NULL;
+    struct wlr_surface *focused_surface = server->seat.wlr_seat->keyboard_state.focused_surface;
+    if (focused_surface) {
+        struct north_view *v;
+        wl_list_for_each(v, &server->views, link)
+        {
+            if (v->surface == focused_surface) {
+                focused = v;
+                break;
+            }
+        }
+    }
+
+    if (!focused) {
+        view_focus_top_visible(server);
+        return;
+    }
+
+    struct wl_list *curr = focused->link.prev;
+    while (curr != &focused->link) {
+        if (curr == &server->views) {
+            curr = curr->prev;
+            continue;
+        }
+        struct north_view *v = wl_container_of(curr, v, link);
+        if (workspace_view_is_visible(v)) {
+            view_focus(v);
+            return;
+        }
+        curr = curr->prev;
+    }
+}
+
 void view_set_position(struct north_view *view, int x, int y)
 {
     view->geometry.x = x;
@@ -342,7 +465,7 @@ void view_set_fullscreen(struct north_view *view, bool fullscreen)
             box = (NorthBox){0, 0, 1920, 1080};
         }
 
-        wlr_scene_node_reparent(&view->tree->node, view->server->layers.fullscreen);
+        wlr_scene_node_raise_to_top(&view->tree->node);
         decoration_set_enabled(&view->decor, false);
 
         view_set_position(view, box.x, box.y);
@@ -355,7 +478,6 @@ void view_set_fullscreen(struct north_view *view, bool fullscreen)
             wlr_foreign_toplevel_handle_v1_set_fullscreen(view->toplevel_handle, true);
         }
     } else {
-        wlr_scene_node_reparent(&view->tree->node, view->server->layers.views);
         decoration_set_enabled(&view->decor, true);
 
         view_set_position(view, view->saved_geometry.x, view->saved_geometry.y);
@@ -396,7 +518,6 @@ void view_set_snapped(struct north_view *view, enum north_snap_zone zone)
     NorthBox snap_box = placement_calculate_snap_box(usable, zone, tb_h);
 
     if (view->state == VIEW_FULLSCREEN) {
-        wlr_scene_node_reparent(&view->tree->node, view->server->layers.views);
         decoration_set_enabled(&view->decor, true);
         if (view->impl && view->impl->set_fullscreen) {
             view->impl->set_fullscreen(view, false);

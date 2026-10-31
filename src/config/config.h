@@ -60,6 +60,10 @@ typedef struct {
     int preview_border_width;
 } NorthSnapConfig;
 
+typedef struct {
+    int count;
+} NorthWorkspaceConfig;
+
 typedef struct north_config {
     Arena arena;
     NorthKeyboardConfig keyboard;
@@ -67,6 +71,7 @@ typedef struct north_config {
     NorthPointerConfig touchpad;
     NorthDecorConfig decor;
     NorthSnapConfig snap;
+    NorthWorkspaceConfig workspaces;
 
     NorthOutputConfig *outputs;
     size_t output_count;

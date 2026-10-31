@@ -8,6 +8,8 @@
 #include <wlr/types/wlr_scene.h>
 
 struct north_server;
+struct north_workspace;
+struct wlr_ext_workspace_group_handle_v1;
 
 struct north_output {
     struct wl_list link;
@@ -17,6 +19,10 @@ struct north_output {
 
     NorthBox usable_area;
     struct wl_list layer_surfaces;
+
+    struct wl_list workspaces;
+    struct north_workspace *active_workspace;
+    struct wlr_ext_workspace_group_handle_v1 *workspace_group;
 
     struct wl_listener frame;
     struct wl_listener request_state;

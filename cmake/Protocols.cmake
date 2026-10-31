@@ -52,6 +52,7 @@ set(TEARING_CONTROL_XML "${CMAKE_SOURCE_DIR}/third_party/wayland-protocols/stagi
 set(PRESENTATION_TIME_XML "${CMAKE_SOURCE_DIR}/third_party/wayland-protocols/stable/presentation-time/presentation-time.xml")
 set(LINUX_DRM_SYNCOBJ_XML "${CMAKE_SOURCE_DIR}/third_party/wayland-protocols/staging/linux-drm-syncobj/linux-drm-syncobj-v1.xml")
 set(VIRTUAL_KEYBOARD_XML "${CMAKE_SOURCE_DIR}/third_party/wlroots/protocol/virtual-keyboard-unstable-v1.xml")
+set(EXT_WORKSPACE_XML "${CMAKE_SOURCE_DIR}/third_party/wayland-protocols/staging/ext-workspace/ext-workspace-v1.xml")
 
 north_generate_protocol("${XDG_SHELL_XML}" "xdg-shell")
 north_generate_protocol("${XDG_DECOR_XML}" "xdg-decoration-unstable-v1")
@@ -70,6 +71,7 @@ north_generate_protocol("${TEARING_CONTROL_XML}" "tearing-control-v1")
 north_generate_protocol("${PRESENTATION_TIME_XML}" "presentation-time")
 north_generate_protocol("${LINUX_DRM_SYNCOBJ_XML}" "linux-drm-syncobj-v1")
 north_generate_protocol("${VIRTUAL_KEYBOARD_XML}" "virtual-keyboard-unstable-v1")
+north_generate_protocol("${EXT_WORKSPACE_XML}" "ext-workspace-v1")
 
 add_library(north_protocols STATIC ${NORTH_PROTO_SOURCES})
 target_include_directories(north_protocols PUBLIC "${PROTO_GEN_DIR}" "${NORTH_DEPS_INCLUDE}")

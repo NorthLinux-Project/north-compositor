@@ -4,6 +4,7 @@
 #include "shell/layer.h"
 #include "shell/lock.h"
 #include "shell/view.h"
+#include "shell/workspace.h"
 #include "shell/xdg.h"
 #include "util/log.h"
 #include "xwayland/xwayland.h"
@@ -363,6 +364,7 @@ BoolResult server_init(struct north_server *server, NorthConfig *config)
                   &server->new_virtual_keyboard);
 
     xwayland_init(server);
+    workspace_manager_init(server);
 
     server->backend_destroy.notify = server_handle_backend_destroy;
     wl_signal_add(&server->backend->events.destroy, &server->backend_destroy);
@@ -415,6 +417,7 @@ void server_finish(struct north_server *server)
     {
         wlr_output_destroy(output->wlr_output);
     }
+    workspace_manager_finish(server);
 
     wlr_scene_node_destroy(&server->scene->tree.node);
     wlr_output_layout_destroy(server->output_layout);

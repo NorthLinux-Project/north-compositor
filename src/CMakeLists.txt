@@ -29,6 +29,7 @@ add_library(north_core STATIC
   shell/xdg.c
   shell/layer.c
   shell/lock.c
+  shell/workspace.c
   xwayland/xwayland.c
   decor/cairo_buffer.c
   decor/titlebar.c
