@@ -69,7 +69,25 @@ void test_default_config_creation(void)
     TEST_ASSERT_EQUAL_INT(9, cfg->workspaces.count);
     TEST_ASSERT_TRUE(cfg->bind_count > 0);
 
+    bool found_alacritty = false;
+    for (size_t i = 0; i < cfg->bind_count; i++) {
+        if (cfg->binds[i].action == NORTH_KEYBIND_ACTION_EXEC && cfg->binds[i].argument &&
+            strcmp(cfg->binds[i].argument, "alacritty") == 0) {
+            found_alacritty = true;
+            break;
+        }
+    }
+    TEST_ASSERT_TRUE(found_alacritty);
+
     config_destroy(cfg);
+}
+
+void test_config_load_null_fallback(void)
+{
+    NorthConfigPtrResult res = config_load(NULL);
+    TEST_ASSERT_TRUE(res.ok);
+    TEST_ASSERT_NOT_NULL(res.value);
+    config_destroy(res.value);
 }
 
 void test_workspace_config_parsing(void)
@@ -184,6 +202,79 @@ void test_compositor_conf_default_file(void)
     config_destroy(cfg);
 }
 
+void test_window_rule_parsing(void)
+{
+    const char *content = "[rule:editor]\n"
+                          "app_id = code\n"
+                          "title = *workspace*\n"
+                          "workspace = 3\n"
+                          "size = 1200x800\n"
+                          "maximize = false\n"
+                          "fullscreen = false\n"
+                          "snap = right\n"
+                          "ssd = true\n"
+                          "\n"
+                          "[rule:browser]\n"
+                          "app_id = firefox\n"
+                          "title = Mozilla Firefox\n"
+                          "workspace = 1\n"
+                          "size = 1920x1080\n"
+                          "maximize = true\n"
+                          "fullscreen = false\n"
+                          "snap = none\n"
+                          "ssd = false\n"
+                          "\n"
+                          "[rule:terminal]\n"
+                          "app_id = foot\n"
+                          "workspace = 2\n"
+                          "size = 900X600\n"
+                          "maximize = Yes\n"
+                          "fullscreen = 0\n"
+                          "snap = top_left\n"
+                          "ssd = TRUE\n";
+
+    NorthConfig *cfg = load_config_from_string(content);
+    TEST_ASSERT_NOT_NULL(cfg);
+    TEST_ASSERT_EQUAL_UINT(3, cfg->rule_count);
+
+    const NorthWindowRule *r1 = &cfg->rules[0];
+    TEST_ASSERT_EQUAL_STRING("editor", r1->name);
+    TEST_ASSERT_EQUAL_STRING("code", r1->app_id);
+    TEST_ASSERT_EQUAL_STRING("*workspace*", r1->title);
+    TEST_ASSERT_EQUAL_INT(3, r1->workspace);
+    TEST_ASSERT_EQUAL_INT(1200, r1->width);
+    TEST_ASSERT_EQUAL_INT(800, r1->height);
+    TEST_ASSERT_EQUAL_INT(0, r1->maximize);
+    TEST_ASSERT_EQUAL_INT(0, r1->fullscreen);
+    TEST_ASSERT_EQUAL_INT(SNAP_RIGHT, r1->snap_zone);
+    TEST_ASSERT_EQUAL_INT(1, r1->ssd);
+
+    const NorthWindowRule *r2 = &cfg->rules[1];
+    TEST_ASSERT_EQUAL_STRING("browser", r2->name);
+    TEST_ASSERT_EQUAL_STRING("firefox", r2->app_id);
+    TEST_ASSERT_EQUAL_STRING("Mozilla Firefox", r2->title);
+    TEST_ASSERT_EQUAL_INT(1, r2->workspace);
+    TEST_ASSERT_EQUAL_INT(1920, r2->width);
+    TEST_ASSERT_EQUAL_INT(1080, r2->height);
+    TEST_ASSERT_EQUAL_INT(1, r2->maximize);
+    TEST_ASSERT_EQUAL_INT(0, r2->fullscreen);
+    TEST_ASSERT_EQUAL_INT(SNAP_NONE, r2->snap_zone);
+    TEST_ASSERT_EQUAL_INT(0, r2->ssd);
+
+    const NorthWindowRule *r3 = &cfg->rules[2];
+    TEST_ASSERT_EQUAL_STRING("terminal", r3->name);
+    TEST_ASSERT_EQUAL_STRING("foot", r3->app_id);
+    TEST_ASSERT_EQUAL_INT(2, r3->workspace);
+    TEST_ASSERT_EQUAL_INT(900, r3->width);
+    TEST_ASSERT_EQUAL_INT(600, r3->height);
+    TEST_ASSERT_EQUAL_INT(1, r3->maximize);
+    TEST_ASSERT_EQUAL_INT(0, r3->fullscreen);
+    TEST_ASSERT_EQUAL_INT(SNAP_TOP_LEFT, r3->snap_zone);
+    TEST_ASSERT_EQUAL_INT(1, r3->ssd);
+
+    config_destroy(cfg);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -194,5 +285,7 @@ int main(void)
     RUN_TEST(test_workspace_config_clamping);
     RUN_TEST(test_workspace_config_invalid_fallback);
     RUN_TEST(test_compositor_conf_default_file);
+    RUN_TEST(test_config_load_null_fallback);
+    RUN_TEST(test_window_rule_parsing);
     return UNITY_END();
 }

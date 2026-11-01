@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include "input/keybind.h"
+#include "shell/placement.h"
 #include "util/arena.h"
 #include "util/error.h"
 
@@ -64,6 +65,19 @@ typedef struct {
     int count;
 } NorthWorkspaceConfig;
 
+typedef struct {
+    const char *name;
+    const char *app_id;
+    const char *title;
+    int workspace;
+    int width;
+    int height;
+    int maximize;
+    int fullscreen;
+    int ssd;
+    enum north_snap_zone snap_zone;
+} NorthWindowRule;
+
 typedef struct north_config {
     Arena arena;
     NorthKeyboardConfig keyboard;
@@ -78,6 +92,9 @@ typedef struct north_config {
 
     NorthKeybind *binds;
     size_t bind_count;
+
+    NorthWindowRule *rules;
+    size_t rule_count;
 } NorthConfig;
 
 DEFINE_RESULT(NorthColor, NorthColor)

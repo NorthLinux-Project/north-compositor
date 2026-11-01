@@ -43,6 +43,7 @@ struct north_view {
     enum north_view_type type;
     const struct north_view_impl *impl;
     struct north_workspace *workspace;
+    int saved_workspace_index;
 
     union {
         struct wlr_xdg_toplevel *xdg_toplevel;
@@ -56,6 +57,8 @@ struct north_view {
 
     enum north_view_state state;
     enum north_snap_zone snap_zone;
+    bool rules_applied;
+    int rule_ssd;
     NorthBox geometry;
     NorthBox saved_geometry;
 
@@ -110,6 +113,7 @@ void view_set_fullscreen(struct north_view *view, bool fullscreen);
 void view_set_snapped(struct north_view *view, enum north_snap_zone zone);
 void view_restore(struct north_view *view);
 void view_close(struct north_view *view);
+void view_apply_rules(struct north_view *view);
 
 struct north_view *view_from_node(struct wlr_scene_node *node);
 

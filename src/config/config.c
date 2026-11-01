@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
+#include <unistd.h>
 
 NorthColorResult config_parse_color(const char *hex_str)
 {
@@ -47,6 +49,8 @@ static void apply_defaults(NorthConfig *cfg)
     cfg->output_count = 0;
     cfg->binds = NULL;
     cfg->bind_count = 0;
+    cfg->rules = NULL;
+    cfg->rule_count = 0;
 
     cfg->keyboard.layout = "us";
     cfg->keyboard.variant = "";
@@ -106,7 +110,7 @@ NorthConfig *config_create_default(void)
     cfg->arena = arena;
     apply_defaults(cfg);
 
-    const char *default_specs[][2] = {{"Super+Return", "exec foot"},
+    const char *default_specs[][2] = {{"Super+Return", "exec alacritty"},
                                       {"Super+Q", "close"},
                                       {"Super+Up", "maximize"},
                                       {"Super+Down", "restore"},
@@ -116,6 +120,7 @@ NorthConfig *config_create_default(void)
                                       {"Super+Alt+Right", "snap_top_right"},
                                       {"Super+F", "fullscreen"},
                                       {"Alt+Tab", "focus_next"},
+                                      {"Alt+Shift+Tab", "focus_prev"},
                                       {"Super+Shift+R", "reload"},
                                       {"Super+Shift+E", "exit"},
                                       {"Super+1", "workspace 1"},
@@ -158,16 +163,31 @@ NorthConfigPtrResult config_load(const char *path)
 {
     char default_path[512];
     if (!path) {
+        bool found = false;
         const char *xdg = getenv("XDG_CONFIG_HOME");
         const char *home = getenv("HOME");
         if (xdg) {
             snprintf(default_path, sizeof(default_path), "%s/north/compositor.conf", xdg);
-        } else if (home) {
+            if (access(default_path, R_OK) == 0) {
+                path = default_path;
+                found = true;
+            }
+        }
+        if (!found && home) {
             snprintf(default_path, sizeof(default_path), "%s/.config/north/compositor.conf", home);
-        } else {
+            if (access(default_path, R_OK) == 0) {
+                path = default_path;
+                found = true;
+            }
+        }
+        if (!found && access("compositor.conf", R_OK) == 0) {
+            path = "compositor.conf";
+            found = true;
+        }
+        if (!found) {
+            LOG_INFO("Config file not found in XDG or current directory, using built-in defaults");
             return RESULT_OK(NorthConfigPtr, config_create_default());
         }
-        path = default_path;
     }
 
     FILE *f = fopen(path, "rb");
@@ -224,6 +244,10 @@ NorthConfigPtrResult config_load(const char *path)
     size_t out_cap = 16;
     cfg->outputs = arena_push_array(&cfg->arena, NorthOutputConfig, out_cap);
     cfg->output_count = 0;
+
+    size_t rule_cap = 64;
+    cfg->rules = arena_push_array(&cfg->arena, NorthWindowRule, rule_cap);
+    cfg->rule_count = 0;
 
     for (size_t i = 0; i < doc.count; ++i) {
         ConfigEntry *e = &doc.entries[i];
@@ -347,6 +371,84 @@ NorthConfigPtrResult config_load(const char *path)
                     sscanf(e->value, "%d,%d", &out->x, &out->y);
                 } else if (strcmp(e->key, "enabled") == 0) {
                     out->enabled = (strcmp(e->value, "true") == 0);
+                }
+            }
+        } else if (strncmp(e->section, "rule:", 5) == 0) {
+            const char *rule_name = e->section + 5;
+            NorthWindowRule *rule = NULL;
+            for (size_t r = 0; r < cfg->rule_count; ++r) {
+                if (strcmp(cfg->rules[r].name, rule_name) == 0) {
+                    rule = &cfg->rules[r];
+                    break;
+                }
+            }
+            if (!rule && cfg->rule_count < rule_cap) {
+                rule = &cfg->rules[cfg->rule_count++];
+                memset(rule, 0, sizeof(*rule));
+                rule->name = rule_name;
+                rule->maximize = -1;
+                rule->fullscreen = -1;
+                rule->ssd = -1;
+                rule->snap_zone = SNAP_NONE;
+            }
+            if (rule) {
+                if (strcmp(e->key, "app_id") == 0) {
+                    rule->app_id = e->value;
+                } else if (strcmp(e->key, "title") == 0) {
+                    rule->title = e->value;
+                } else if (strcmp(e->key, "workspace") == 0) {
+                    int ws = atoi(e->value);
+                    if (ws >= 1 && ws <= 32) {
+                        rule->workspace = ws;
+                    }
+                } else if (strcmp(e->key, "size") == 0) {
+                    int w = 0, h = 0;
+                    if (sscanf(e->value, "%d %*[xX] %d", &w, &h) == 2 && w > 0 && h > 0) {
+                        rule->width = w;
+                        rule->height = h;
+                    }
+                } else if (strcmp(e->key, "maximize") == 0) {
+                    if (strcasecmp(e->value, "true") == 0 || strcmp(e->value, "1") == 0 ||
+                        strcasecmp(e->value, "yes") == 0) {
+                        rule->maximize = 1;
+                    } else if (strcasecmp(e->value, "false") == 0 || strcmp(e->value, "0") == 0 ||
+                               strcasecmp(e->value, "no") == 0) {
+                        rule->maximize = 0;
+                    }
+                } else if (strcmp(e->key, "fullscreen") == 0) {
+                    if (strcasecmp(e->value, "true") == 0 || strcmp(e->value, "1") == 0 ||
+                        strcasecmp(e->value, "yes") == 0) {
+                        rule->fullscreen = 1;
+                    } else if (strcasecmp(e->value, "false") == 0 || strcmp(e->value, "0") == 0 ||
+                               strcasecmp(e->value, "no") == 0) {
+                        rule->fullscreen = 0;
+                    }
+                } else if (strcmp(e->key, "ssd") == 0) {
+                    if (strcasecmp(e->value, "true") == 0 || strcmp(e->value, "1") == 0 ||
+                        strcasecmp(e->value, "yes") == 0) {
+                        rule->ssd = 1;
+                    } else if (strcasecmp(e->value, "false") == 0 || strcmp(e->value, "0") == 0 ||
+                               strcasecmp(e->value, "no") == 0) {
+                        rule->ssd = 0;
+                    }
+                } else if (strcmp(e->key, "snap") == 0) {
+                    if (strcasecmp(e->value, "left") == 0) {
+                        rule->snap_zone = SNAP_LEFT;
+                    } else if (strcasecmp(e->value, "right") == 0) {
+                        rule->snap_zone = SNAP_RIGHT;
+                    } else if (strcasecmp(e->value, "top") == 0) {
+                        rule->snap_zone = SNAP_TOP;
+                    } else if (strcasecmp(e->value, "top_left") == 0) {
+                        rule->snap_zone = SNAP_TOP_LEFT;
+                    } else if (strcasecmp(e->value, "top_right") == 0) {
+                        rule->snap_zone = SNAP_TOP_RIGHT;
+                    } else if (strcasecmp(e->value, "bottom_left") == 0) {
+                        rule->snap_zone = SNAP_BOTTOM_LEFT;
+                    } else if (strcasecmp(e->value, "bottom_right") == 0) {
+                        rule->snap_zone = SNAP_BOTTOM_RIGHT;
+                    } else if (strcasecmp(e->value, "none") == 0) {
+                        rule->snap_zone = SNAP_NONE;
+                    }
                 }
             }
         } else if (strcmp(e->section, "bind") == 0) {

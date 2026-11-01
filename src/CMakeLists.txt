@@ -3,6 +3,7 @@
 add_library(north_util STATIC
   util/arena.c
   util/log.c
+  util/match.c
 )
 target_include_directories(north_util PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(north_util PUBLIC project_warnings project_sanitizers)
@@ -30,6 +31,7 @@ add_library(north_core STATIC
   shell/layer.c
   shell/lock.c
   shell/workspace.c
+  shell/switcher.c
   xwayland/xwayland.c
   decor/cairo_buffer.c
   decor/titlebar.c

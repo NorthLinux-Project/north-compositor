@@ -251,6 +251,7 @@ static void xwayland_handle_map(struct wl_listener *listener, void *data)
 
     if (out && out->active_workspace) {
         view->workspace = out->active_workspace;
+        view->saved_workspace_index = out->active_workspace->index;
         wlr_scene_node_reparent(&view->tree->node, out->active_workspace->tree);
     }
 
@@ -284,11 +285,17 @@ static void xwayland_handle_map(struct wl_listener *listener, void *data)
     float scale = out && out->wlr_output ? out->wlr_output->scale : 1.0f;
     decoration_update(&view->decor, view->geometry.width, view->geometry.height, scale);
 
-    if (xsurface->maximized_horz && xsurface->maximized_vert) {
+    if (xsurface->fullscreen) {
+        view_set_fullscreen(view, true);
+    } else if (xsurface->maximized_horz && xsurface->maximized_vert) {
         view_set_maximized(view, true);
     }
 
-    view_focus(view);
+    view_apply_rules(view);
+
+    if (workspace_view_is_visible(view)) {
+        view_focus(view);
+    }
 }
 
 static void xwayland_handle_request_configure(struct wl_listener *listener, void *data)
@@ -355,6 +362,9 @@ static void xwayland_handle_set_title(struct wl_listener *listener, void *data)
                                                      view->xwayland_surface->title);
         }
     }
+    if (view->surface && view->surface->mapped && !view->rules_applied) {
+        view_apply_rules(view);
+    }
 }
 
 static void xwayland_handle_set_class(struct wl_listener *listener, void *data)
@@ -365,6 +375,9 @@ static void xwayland_handle_set_class(struct wl_listener *listener, void *data)
         wlr_foreign_toplevel_handle_v1_set_app_id(view->toplevel_handle,
                                                   view->xwayland_surface->class);
     }
+    if (view->surface && view->surface->mapped && !view->rules_applied) {
+        view_apply_rules(view);
+    }
 }
 
 static void xwayland_handle_set_decorations(struct wl_listener *listener, void *data)
@@ -373,6 +386,11 @@ static void xwayland_handle_set_decorations(struct wl_listener *listener, void *
     struct north_view *view = wl_container_of(listener, view, set_decorations);
     bool enabled =
         (view->xwayland_surface->decorations != WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER);
+    if (view->rule_ssd == 1) {
+        enabled = true;
+    } else if (view->rule_ssd == 0) {
+        enabled = false;
+    }
     decoration_set_enabled(&view->decor, enabled);
 }
 

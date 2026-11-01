@@ -10,6 +10,7 @@
 struct north_server;
 struct north_workspace;
 struct wlr_ext_workspace_group_handle_v1;
+struct wlr_output_configuration_v1;
 
 struct north_output {
     struct wl_list link;
@@ -32,5 +33,8 @@ struct north_output {
 void output_handle_new(struct north_server *server, struct wlr_output *wlr_output);
 NorthBox output_get_usable_box(struct north_output *output);
 struct north_output *output_at(struct north_server *server, double lx, double ly);
+void server_update_output_manager_config(struct north_server *server);
+void output_manager_apply(struct north_server *server, struct wlr_output_configuration_v1 *config);
+void output_manager_test(struct north_server *server, struct wlr_output_configuration_v1 *config);
 
 #endif

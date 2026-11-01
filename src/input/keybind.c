@@ -82,6 +82,9 @@ NorthKeybindResult keybind_parse(Arena *arena, const char *spec, const char *act
             name_buf[token_len] = '\0';
 
             xkb_keysym_t sym = xkb_keysym_from_name(name_buf, XKB_KEYSYM_CASE_INSENSITIVE);
+            if (strcasecmp(name_buf, "Enter") == 0) {
+                sym = XKB_KEY_Return;
+            }
             if (sym == XKB_KEY_NoSymbol) {
                 return RESULT_ERR(NorthKeybind,
                                   ERROR_CREATE(ERR_NOT_FOUND, "unrecognized keysym name"));

@@ -4,9 +4,11 @@
 #include "output/output.h"
 #include "shell/workspace.h"
 #include "util/log.h"
+#include "util/match.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <wlr/types/wlr_xdg_decoration_v1.h>
 
 struct north_view *view_init_base(struct north_server *server, enum north_view_type type,
                                   const struct north_view_impl *impl)
@@ -26,6 +28,7 @@ struct north_view *view_init_base(struct north_server *server, enum north_view_t
         return NULL;
     }
     view->tree->node.data = view;
+    view->rule_ssd = -1;
 
     decoration_init(&view->decor, view);
     return view;
@@ -39,6 +42,8 @@ void view_handle_unmap(struct wl_listener *listener, void *data)
                             ? view->xdg_toplevel->title
                             : (view->xwayland_surface ? view->xwayland_surface->title : NULL);
     LOG_INFO("View unmapped: title='%s'", title ? title : "(null)");
+
+    switcher_notify_view_unmap(view->server, view);
 
     wl_list_remove(&view->link);
     wl_list_init(&view->link);
@@ -179,6 +184,10 @@ void view_destroy(struct north_view *view)
         wl_list_remove(&view->foreign_request_close.link);
         wlr_foreign_toplevel_handle_v1_destroy(view->toplevel_handle);
         view->toplevel_handle = NULL;
+    }
+
+    if (view->server) {
+        switcher_notify_view_unmap(view->server, view);
     }
 
     if (view->link.next && view->link.prev) {
@@ -384,7 +393,7 @@ void view_set_size(struct north_view *view, int width, int height)
 
 void view_set_maximized(struct north_view *view, bool maximized)
 {
-    if (maximized == (view->state == VIEW_MAXIMIZED)) {
+    if (!maximized && view->state != VIEW_MAXIMIZED) {
         return;
     }
 
@@ -395,6 +404,9 @@ void view_set_maximized(struct north_view *view, bool maximized)
         double cx = view->geometry.x + view->geometry.width / 2.0;
         double cy = view->geometry.y + view->geometry.height / 2.0;
         struct north_output *out = output_at(view->server, cx, cy);
+        if (!out && view->workspace && view->workspace->output) {
+            out = view->workspace->output;
+        }
         if (!out && !wl_list_empty(&view->server->outputs)) {
             out = wl_container_of(view->server->outputs.next, out, link);
         }
@@ -456,6 +468,12 @@ void view_set_fullscreen(struct north_view *view, bool fullscreen)
             view->saved_geometry = view->geometry;
         }
         struct north_output *out = output_at(view->server, view->geometry.x, view->geometry.y);
+        if (!out && view->workspace && view->workspace->output) {
+            out = view->workspace->output;
+        }
+        if (!out && !wl_list_empty(&view->server->outputs)) {
+            out = wl_container_of(view->server->outputs.next, out, link);
+        }
         NorthBox box;
         if (out && out->wlr_output) {
             struct wlr_box lbox;
@@ -478,7 +496,9 @@ void view_set_fullscreen(struct north_view *view, bool fullscreen)
             wlr_foreign_toplevel_handle_v1_set_fullscreen(view->toplevel_handle, true);
         }
     } else {
-        decoration_set_enabled(&view->decor, true);
+        if (view->rule_ssd != 0) {
+            decoration_set_enabled(&view->decor, true);
+        }
 
         view_set_position(view, view->saved_geometry.x, view->saved_geometry.y);
         view_set_size(view, view->saved_geometry.width, view->saved_geometry.height);
@@ -509,6 +529,9 @@ void view_set_snapped(struct north_view *view, enum north_snap_zone zone)
     double cx = view->geometry.x + view->geometry.width / 2.0;
     double cy = view->geometry.y + view->geometry.height / 2.0;
     struct north_output *out = output_at(view->server, cx, cy);
+    if (!out && view->workspace && view->workspace->output) {
+        out = view->workspace->output;
+    }
     if (!out && !wl_list_empty(&view->server->outputs)) {
         out = wl_container_of(view->server->outputs.next, out, link);
     }
@@ -518,7 +541,9 @@ void view_set_snapped(struct north_view *view, enum north_snap_zone zone)
     NorthBox snap_box = placement_calculate_snap_box(usable, zone, tb_h);
 
     if (view->state == VIEW_FULLSCREEN) {
-        decoration_set_enabled(&view->decor, true);
+        if (view->rule_ssd != 0) {
+            decoration_set_enabled(&view->decor, true);
+        }
         if (view->impl && view->impl->set_fullscreen) {
             view->impl->set_fullscreen(view, false);
         }
@@ -576,6 +601,117 @@ void view_close(struct north_view *view)
 {
     if (view && view->impl && view->impl->send_close) {
         view->impl->send_close(view);
+    }
+}
+
+void view_apply_rules(struct north_view *view)
+{
+    if (!view || !view->surface || !view->surface->mapped || !view->server ||
+        !view->server->config || view->rules_applied) {
+        return;
+    }
+
+    const NorthConfig *config = view->server->config;
+    if (!config->rules || config->rule_count == 0) {
+        return;
+    }
+
+    const char *app_id = NULL;
+    const char *title = NULL;
+
+    if (view->type == NORTH_VIEW_XDG && view->xdg_toplevel) {
+        app_id = view->xdg_toplevel->app_id;
+        title = view->xdg_toplevel->title;
+    } else if (view->type == NORTH_VIEW_XWAYLAND && view->xwayland_surface) {
+        app_id = view->xwayland_surface->class;
+        title = view->xwayland_surface->title;
+    }
+
+    for (size_t i = 0; i < config->rule_count; ++i) {
+        const NorthWindowRule *rule = &config->rules[i];
+
+        if (!rule->app_id && !rule->title) {
+            continue;
+        }
+        if (rule->app_id && (!app_id || !pattern_match(rule->app_id, app_id))) {
+            continue;
+        }
+        if (rule->title && (!title || !pattern_match(rule->title, title))) {
+            continue;
+        }
+
+        view->rules_applied = true;
+        LOG_INFO("Applying window rule '%s' to view (app_id='%s', title='%s')",
+                 rule->name ? rule->name : "(unnamed)", app_id ? app_id : "", title ? title : "");
+
+        if (rule->workspace >= 1 && rule->workspace <= 32) {
+            workspace_move_view(view, rule->workspace - 1);
+        }
+
+        if (rule->ssd != -1) {
+            view->rule_ssd = rule->ssd;
+            decoration_set_enabled(&view->decor, rule->ssd == 1);
+            if (view->type == NORTH_VIEW_XDG && view->server->xdg_decoration_manager) {
+                struct wlr_xdg_toplevel_decoration_v1 *decor;
+                wl_list_for_each(decor, &view->server->xdg_decoration_manager->decorations, link)
+                {
+                    if (decor->toplevel == view->xdg_toplevel) {
+                        enum wlr_xdg_toplevel_decoration_v1_mode mode =
+                            (rule->ssd == 1) ? WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE
+                                             : WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+                        wlr_xdg_toplevel_decoration_v1_set_mode(decor, mode);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (view->state == VIEW_FULLSCREEN &&
+            (rule->fullscreen == 0 || rule->maximize == 1 || rule->snap_zone != SNAP_NONE ||
+             (rule->width > 0 && rule->fullscreen != 1))) {
+            view_set_fullscreen(view, false);
+        }
+
+        if (view->state == VIEW_MAXIMIZED &&
+            (rule->maximize == 0 || rule->fullscreen == 1 || rule->snap_zone != SNAP_NONE ||
+             (rule->width > 0 && rule->maximize != 1))) {
+            view_set_maximized(view, false);
+        }
+
+        if (rule->width > 0 && rule->height > 0) {
+            view_set_size(view, rule->width, rule->height);
+            struct north_output *out = view->workspace ? view->workspace->output : NULL;
+            if (!out && !wl_list_empty(&view->server->outputs)) {
+                out = wl_container_of(view->server->outputs.next, out, link);
+            }
+            if (view->state == VIEW_NORMAL) {
+                NorthBox usable = out ? output_get_usable_box(out) : (NorthBox){0, 0, 1920, 1080};
+                NorthBox initial = placement_initial(usable, usable, NULL, 0, view->geometry.width,
+                                                     view->geometry.height);
+                view_set_position(view, initial.x, initial.y);
+            }
+            view->saved_geometry = view->geometry;
+            float scale = out && out->wlr_output ? out->wlr_output->scale : 1.0f;
+            decoration_update(&view->decor, view->geometry.width, view->geometry.height, scale);
+        }
+
+        if (rule->snap_zone != SNAP_NONE) {
+            view_set_snapped(view, rule->snap_zone);
+        }
+
+        if (rule->maximize == 1) {
+            view_set_maximized(view, true);
+        } else if (rule->maximize == 0 && view->state == VIEW_MAXIMIZED) {
+            view_set_maximized(view, false);
+        }
+
+        if (rule->fullscreen == 1) {
+            view_set_fullscreen(view, true);
+        } else if (rule->fullscreen == 0 && view->state == VIEW_FULLSCREEN) {
+            view_set_fullscreen(view, false);
+        }
+
+        break;
     }
 }
 

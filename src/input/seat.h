@@ -29,6 +29,7 @@ struct north_seat {
     NorthBox grab_box;
     uint32_t resize_edges;
     bool snap_suppressed;
+    bool switcher_click_pending;
 
     uint32_t last_click_time;
     struct north_view *last_click_view;

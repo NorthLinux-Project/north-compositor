@@ -18,6 +18,13 @@ void test_keybind_parse_modifiers_and_keysym(void)
     TEST_ASSERT_EQUAL_INT(NORTH_KEYBIND_ACTION_EXEC, r1.value.action);
     TEST_ASSERT_EQUAL_STRING("foot", r1.value.argument);
 
+    NorthKeybindResult r1_enter = keybind_parse(&test_arena, "Super+Enter", "exec alacritty");
+    TEST_ASSERT_TRUE(r1_enter.ok);
+    TEST_ASSERT_EQUAL_UINT32(NORTH_MOD_SUPER, r1_enter.value.modifiers);
+    TEST_ASSERT_EQUAL_UINT32(XKB_KEY_Return, r1_enter.value.keysym);
+    TEST_ASSERT_EQUAL_INT(NORTH_KEYBIND_ACTION_EXEC, r1_enter.value.action);
+    TEST_ASSERT_EQUAL_STRING("alacritty", r1_enter.value.argument);
+
     NorthKeybindResult r2 = keybind_parse(&test_arena, "Super+Shift+Q", "close");
     TEST_ASSERT_TRUE(r2.ok);
     TEST_ASSERT_EQUAL_UINT32(NORTH_MOD_SUPER | NORTH_MOD_SHIFT, r2.value.modifiers);

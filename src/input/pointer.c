@@ -242,6 +242,21 @@ static void cursor_handle_button(struct wl_listener *listener, void *data)
         wlr_idle_notifier_v1_notify_activity(server->idle_notifier, seat->wlr_seat);
     }
 
+    if (server->switcher.active) {
+        if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
+            seat->switcher_click_pending = true;
+            switcher_handle_click(server, seat->cursor->x, seat->cursor->y);
+        }
+        return;
+    }
+
+    if (seat->switcher_click_pending) {
+        if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
+            seat->switcher_click_pending = false;
+        }
+        return;
+    }
+
     if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
         if (seat->cursor_mode != NORTH_CURSOR_PASSTHROUGH) {
             if (seat->cursor_mode == NORTH_CURSOR_MOVE && seat->grabbed_view &&

@@ -36,6 +36,10 @@ add_unity_test(test_arena unit/test_arena.c
   LIBRARIES north_util
 )
 
+add_unity_test(test_pattern_match unit/test_pattern_match.c
+  LIBRARIES north_util
+)
+
 add_unity_test(test_config_parser unit/test_config_parser.c
   LIBRARIES north_core_pure
 )
@@ -97,4 +101,20 @@ add_unity_test(test_workspaces integration/test_workspaces.c
   LIBRARIES north::wayland_client north_protocols north::xkbcommon
   DEPENDS north-compositor
 )
+
+add_unity_test(test_output_management integration/test_output_management.c
+  LIBRARIES north::wayland_client north_protocols m
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_window_rules integration/test_window_rules.c
+  LIBRARIES north::wayland_client north_protocols
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_switcher integration/test_switcher.c
+  LIBRARIES north::wayland_client north_protocols north::xkbcommon
+  DEPENDS north-compositor
+)
+
 

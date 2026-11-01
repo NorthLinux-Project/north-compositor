@@ -139,6 +139,7 @@ static void xdg_handle_map(struct wl_listener *listener, void *data)
 
     if (out && out->active_workspace) {
         view->workspace = out->active_workspace;
+        view->saved_workspace_index = out->active_workspace->index;
         wlr_scene_node_reparent(&view->tree->node, out->active_workspace->tree);
     }
 
@@ -176,7 +177,11 @@ static void xdg_handle_map(struct wl_listener *listener, void *data)
         view_set_maximized(view, true);
     }
 
-    view_focus(view);
+    view_apply_rules(view);
+
+    if (workspace_view_is_visible(view)) {
+        view_focus(view);
+    }
 }
 
 static void xdg_handle_request_resize(struct wl_listener *listener, void *data)
@@ -214,6 +219,9 @@ static void xdg_handle_set_title(struct wl_listener *listener, void *data)
     if (view->toplevel_handle && view->xdg_toplevel->title) {
         wlr_foreign_toplevel_handle_v1_set_title(view->toplevel_handle, view->xdg_toplevel->title);
     }
+    if (view->surface && view->surface->mapped && !view->rules_applied) {
+        view_apply_rules(view);
+    }
 }
 
 static void xdg_handle_set_app_id(struct wl_listener *listener, void *data)
@@ -223,6 +231,9 @@ static void xdg_handle_set_app_id(struct wl_listener *listener, void *data)
     if (view->toplevel_handle && view->xdg_toplevel->app_id) {
         wlr_foreign_toplevel_handle_v1_set_app_id(view->toplevel_handle,
                                                   view->xdg_toplevel->app_id);
+    }
+    if (view->surface && view->surface->mapped && !view->rules_applied) {
+        view_apply_rules(view);
     }
 }
 

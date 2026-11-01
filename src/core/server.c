@@ -29,6 +29,18 @@ static void decor_handle_request_mode(struct wl_listener *listener, void *data)
         decor->wlr_decor->requested_mode != WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_NONE) {
         mode = decor->wlr_decor->requested_mode;
     }
+    struct north_view *v;
+    wl_list_for_each(v, &decor->server->views, link)
+    {
+        if (v->type == NORTH_VIEW_XDG && v->xdg_toplevel == decor->wlr_decor->toplevel) {
+            if (v->rule_ssd == 1) {
+                mode = WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+            } else if (v->rule_ssd == 0 || !v->decor.enabled) {
+                mode = WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+            }
+            break;
+        }
+    }
     if (decor->wlr_decor->toplevel->base->initialized) {
         wlr_xdg_toplevel_decoration_v1_set_mode(decor->wlr_decor, mode);
     } else {
@@ -68,6 +80,18 @@ static void server_handle_new_decoration(struct wl_listener *listener, void *dat
         wlr_decor->requested_mode != WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_NONE) {
         mode = wlr_decor->requested_mode;
     }
+    struct north_view *v;
+    wl_list_for_each(v, &server->views, link)
+    {
+        if (v->type == NORTH_VIEW_XDG && v->xdg_toplevel == wlr_decor->toplevel) {
+            if (v->rule_ssd == 1) {
+                mode = WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+            } else if (v->rule_ssd == 0 || !v->decor.enabled) {
+                mode = WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+            }
+            break;
+        }
+    }
     if (wlr_decor->toplevel->base->initialized) {
         wlr_xdg_toplevel_decoration_v1_set_mode(wlr_decor, mode);
     } else {
@@ -106,6 +130,28 @@ static void idle_inhibitor_handle_destroy(struct wl_listener *listener, void *da
     server->idle_inhibit_count--;
     if (server->idle_notifier) {
         wlr_idle_notifier_v1_set_inhibited(server->idle_notifier, server->idle_inhibit_count > 0);
+    }
+}
+
+static void server_handle_session_active(struct wl_listener *listener, void *data)
+{
+    (void)data;
+    struct north_server *server = wl_container_of(listener, server, session_active);
+    if (!server->session) {
+        return;
+    }
+    if (server->session->active) {
+        LOG_INFO("Session activated (switched back to compositor VT)");
+        struct north_output *output;
+        wl_list_for_each(output, &server->outputs, link)
+        {
+            if (output->wlr_output && output->wlr_output->enabled) {
+                wlr_output_schedule_frame(output->wlr_output);
+            }
+        }
+        view_focus_top_visible(server);
+    } else {
+        LOG_INFO("Session deactivated (switched away from compositor VT)");
     }
 }
 
@@ -202,6 +248,27 @@ static void server_handle_new_virtual_keyboard(struct wl_listener *listener, voi
     seat_add_keyboard(&server->seat, &vk->keyboard);
 }
 
+static void server_handle_new_virtual_pointer(struct wl_listener *listener, void *data)
+{
+    struct north_server *server = wl_container_of(listener, server, new_virtual_pointer);
+    struct wlr_virtual_pointer_v1_new_pointer_event *event = data;
+    seat_add_device(&server->seat, &event->new_pointer->pointer.base);
+}
+
+static void server_handle_output_mgr_apply(struct wl_listener *listener, void *data)
+{
+    struct north_server *server = wl_container_of(listener, server, output_mgr_apply);
+    struct wlr_output_configuration_v1 *config = data;
+    output_manager_apply(server, config);
+}
+
+static void server_handle_output_mgr_test(struct wl_listener *listener, void *data)
+{
+    struct north_server *server = wl_container_of(listener, server, output_mgr_test);
+    struct wlr_output_configuration_v1 *config = data;
+    output_manager_test(server, config);
+}
+
 void server_set_session_locked(struct north_server *server, bool locked)
 {
     wlr_scene_node_set_enabled(&server->layers.background->node, !locked);
@@ -230,6 +297,11 @@ BoolResult server_init(struct north_server *server, NorthConfig *config)
     server->backend = wlr_backend_autocreate(server->loop, &server->session);
     if (!server->backend) {
         return RESULT_ERR(Bool, ERROR_CREATE(ERR_INTERNAL, "failed autocreating wlr_backend"));
+    }
+
+    if (server->session) {
+        server->session_active.notify = server_handle_session_active;
+        wl_signal_add(&server->session->events.active, &server->session_active);
     }
 
     server->renderer = wlr_renderer_autocreate(server->backend);
@@ -276,6 +348,7 @@ BoolResult server_init(struct north_server *server, NorthConfig *config)
     wlr_scene_node_set_enabled(&server->snap_preview_tree->node, false);
 
     seat_init(&server->seat, server);
+    switcher_init(server);
 
     server->xdg_shell = wlr_xdg_shell_create(server->display, 6);
     server->xdg_decoration_manager = wlr_xdg_decoration_manager_v1_create(server->display);
@@ -305,6 +378,14 @@ BoolResult server_init(struct north_server *server, NorthConfig *config)
 
     wlr_xdg_output_manager_v1_create(server->display, server->output_layout);
     server->output_manager = wlr_output_manager_v1_create(server->display);
+    if (server->output_manager) {
+        server->output_mgr_apply.notify = server_handle_output_mgr_apply;
+        wl_signal_add(&server->output_manager->events.apply, &server->output_mgr_apply);
+        server->output_mgr_test.notify = server_handle_output_mgr_test;
+        wl_signal_add(&server->output_manager->events.test, &server->output_mgr_test);
+    } else {
+        LOG_ERROR("Failed to create wlr_output_manager_v1");
+    }
 
     struct wlr_linux_dmabuf_v1 *dmabuf =
         wlr_linux_dmabuf_v1_create_with_renderer(server->display, 5, server->renderer);
@@ -363,6 +444,13 @@ BoolResult server_init(struct north_server *server, NorthConfig *config)
     wl_signal_add(&server->virtual_keyboard_manager->events.new_virtual_keyboard,
                   &server->new_virtual_keyboard);
 
+    server->virtual_pointer_manager = wlr_virtual_pointer_manager_v1_create(server->display);
+    if (server->virtual_pointer_manager) {
+        server->new_virtual_pointer.notify = server_handle_new_virtual_pointer;
+        wl_signal_add(&server->virtual_pointer_manager->events.new_virtual_pointer,
+                      &server->new_virtual_pointer);
+    }
+
     xwayland_init(server);
     workspace_manager_init(server);
 
@@ -401,6 +489,18 @@ void server_finish(struct north_server *server)
     wl_list_remove(&server->new_idle_inhibitor.link);
     wl_list_remove(&server->new_pointer_constraint.link);
     wl_list_remove(&server->new_virtual_keyboard.link);
+    if (server->virtual_pointer_manager) {
+        wl_list_remove(&server->new_virtual_pointer.link);
+    }
+    switcher_finish(server);
+    if (server->output_manager) {
+        wl_list_remove(&server->output_mgr_apply.link);
+        wl_list_remove(&server->output_mgr_test.link);
+        server->output_manager = NULL;
+    }
+    if (server->session) {
+        wl_list_remove(&server->session_active.link);
+    }
     wl_list_remove(&server->backend_destroy.link);
 
     server_set_active_constraint(server, NULL);

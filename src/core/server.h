@@ -4,6 +4,7 @@
 #include "config/config.h"
 #include "input/seat.h"
 #include "shell/placement.h"
+#include "shell/switcher.h"
 #include "util/error.h"
 
 #include <wayland-server-core.h>
@@ -37,6 +38,7 @@
 #include <wlr/types/wlr_tearing_control_v1.h>
 #include <wlr/types/wlr_viewporter.h>
 #include <wlr/types/wlr_virtual_keyboard_v1.h>
+#include <wlr/types/wlr_virtual_pointer_v1.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 #include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/types/wlr_xdg_shell.h>
@@ -71,6 +73,9 @@ struct north_server {
     struct wl_list views;
     struct north_seat seat;
     NorthConfig *config;
+    struct north_switcher switcher;
+    bool switcher_escape_pending;
+    bool switcher_just_committed;
 
     struct wlr_xdg_shell *xdg_shell;
     struct wlr_xdg_decoration_manager_v1 *xdg_decoration_manager;
@@ -91,6 +96,7 @@ struct north_server {
     struct wlr_ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
     struct wlr_ext_workspace_manager_v1 *ext_workspace_manager;
     struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
+    struct wlr_virtual_pointer_manager_v1 *virtual_pointer_manager;
     struct wlr_pointer_constraint_v1 *active_constraint;
     struct wlr_xwayland *xwayland;
 
@@ -116,12 +122,14 @@ struct north_server {
     struct wl_listener new_session_lock;
     struct wl_listener new_pointer_constraint;
     struct wl_listener new_virtual_keyboard;
+    struct wl_listener new_virtual_pointer;
     struct wl_listener constraint_destroy;
     struct wl_listener xwayland_ready;
     struct wl_listener new_xwayland_surface;
     struct wl_listener backend_destroy;
     struct wl_listener output_mgr_apply;
     struct wl_listener output_mgr_test;
+    struct wl_listener session_active;
     struct wl_listener workspace_commit;
 };
 

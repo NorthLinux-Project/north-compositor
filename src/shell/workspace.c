@@ -244,6 +244,7 @@ void workspace_move_view(struct north_view *view, int target_index)
     wlr_scene_node_reparent(&view->tree->node, target_ws->tree);
     wlr_scene_node_raise_to_top(&view->tree->node);
     view->workspace = target_ws;
+    view->saved_workspace_index = target_ws->index;
 
     if (was_focused && was_active && target_ws != output->active_workspace) {
         wl_list_remove(&view->link);
@@ -370,6 +371,11 @@ void workspace_migrate_views_to_output(struct north_output *src, struct north_ou
                 wlr_output_layout_get_box(dst->server->output_layout, dst->wlr_output, &lbox);
                 view_set_position(view, lbox.x, lbox.y);
                 view_set_size(view, lbox.width, lbox.height);
+            } else if (view->state == VIEW_SNAPPED) {
+                int tb_h = view->decor.enabled ? view->server->config->decor.titlebar_height : 0;
+                NorthBox snap_box = placement_calculate_snap_box(usable, view->snap_zone, tb_h);
+                view_set_position(view, snap_box.x, snap_box.y);
+                view_set_size(view, snap_box.width, snap_box.height);
             } else {
                 int vx = view->geometry.x;
                 int vy = view->geometry.y;
