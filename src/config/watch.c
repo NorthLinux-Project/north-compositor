@@ -52,6 +52,7 @@ static int handle_inotify_event(int fd, uint32_t mask, void *data)
     }
 
     config_destroy(old_cfg);
+    ipc_broadcast_config_event(watch->server, "reload");
     LOG_INFO("Config reloaded successfully");
     return 0;
 }

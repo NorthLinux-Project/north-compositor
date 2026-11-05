@@ -67,6 +67,8 @@ void test_default_config_creation(void)
     TEST_ASSERT_EQUAL_INT(600, cfg->keyboard.repeat_delay);
     TEST_ASSERT_EQUAL_INT(28, cfg->decor.titlebar_height);
     TEST_ASSERT_EQUAL_INT(9, cfg->workspaces.count);
+    TEST_ASSERT_TRUE(cfg->anim.enabled);
+    TEST_ASSERT_EQUAL_INT(200, cfg->anim.duration_ms);
     TEST_ASSERT_TRUE(cfg->bind_count > 0);
 
     bool found_alacritty = false;
@@ -275,6 +277,25 @@ void test_window_rule_parsing(void)
     config_destroy(cfg);
 }
 
+void test_animation_config_parsing(void)
+{
+    const char *cfg_text = "[animation]\n"
+                           "enabled = false\n"
+                           "duration_ms = 350\n";
+    NorthConfig *cfg = load_config_from_string(cfg_text);
+    TEST_ASSERT_NOT_NULL(cfg);
+    TEST_ASSERT_FALSE(cfg->anim.enabled);
+    TEST_ASSERT_EQUAL_INT(350, cfg->anim.duration_ms);
+    config_destroy(cfg);
+
+    const char *cfg_clamped = "[animation]\n"
+                              "duration_ms = 99999\n";
+    cfg = load_config_from_string(cfg_clamped);
+    TEST_ASSERT_NOT_NULL(cfg);
+    TEST_ASSERT_EQUAL_INT(5000, cfg->anim.duration_ms);
+    config_destroy(cfg);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -287,5 +308,6 @@ int main(void)
     RUN_TEST(test_compositor_conf_default_file);
     RUN_TEST(test_config_load_null_fallback);
     RUN_TEST(test_window_rule_parsing);
+    RUN_TEST(test_animation_config_parsing);
     return UNITY_END();
 }

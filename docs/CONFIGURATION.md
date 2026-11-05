@@ -89,7 +89,15 @@ Colors are specified in `#RRGGBB` or `#RRGGBBAA` hexadecimal notation.
 count = 9                # Total number of virtual workspaces (1 to 9)
 ```
 
-### 2.7 Declarative Window Rules (`[rule:<name>]`)
+### 2.7 Animations (`[animation]`)
+
+```ini
+[animation]
+enabled = true           # Enable smooth scene-graph animations (true/false)
+duration_ms = 200        # Transition duration in milliseconds (0 to 5000)
+```
+
+### 2.8 Declarative Window Rules (`[rule:<name>]`)
 
 Applies geometry, initial workspace, snapping, and decoration styles to windows matching criteria on initial map.
 
@@ -185,3 +193,38 @@ Keybindings follow the format: `<Modifier>+<Key> = <action> [arguments]`.
 | `Ctrl + Alt + F1` .. `F12` | *VT Switch* | Switch Linux Virtual Terminal |
 | `Super + Shift + R` | `reload` | Reload configuration |
 | `Super + Shift + E` | `exit` | Exit compositor |
+
+---
+
+## 4. External Scripting with `northctl`
+
+The `northctl` CLI connects to the running compositor over `$NORTH_IPC_SOCK` to query state, send window management commands, or stream events for desktop status bars (such as Waybar).
+
+### 4.1 State Queries
+```bash
+northctl get workspaces   # Returns array of active workspaces and output associations
+northctl get views        # Returns array of open windows, titles, app_ids, and geometries
+northctl get outputs      # Returns connected outputs, modes, and usable areas
+northctl get version      # Returns compositor version metadata
+```
+
+### 4.2 Window & Compositor Control
+```bash
+northctl msg "workspace 2"           # Switch to workspace 2
+northctl msg "move-to-workspace 3"   # Move focused window to workspace 3
+northctl msg "focus next"            # Focus next window
+northctl msg "close"                 # Close focused window
+northctl msg "maximize"              # Toggle maximize state
+northctl msg "fullscreen"            # Toggle fullscreen state
+northctl reload                      # Reload configuration file
+```
+
+### 4.3 Real-Time Event Streaming (Waybar integration)
+```bash
+# Stream all events as JSON lines to stdout
+northctl subscribe
+
+# Stream only workspace and window events
+northctl subscribe workspace window
+```
+

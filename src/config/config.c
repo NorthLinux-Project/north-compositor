@@ -96,6 +96,9 @@ static void apply_defaults(NorthConfig *cfg)
         cfg->snap.preview_border_color = c_sb.value;
 
     cfg->workspaces.count = 9;
+
+    cfg->anim.enabled = true;
+    cfg->anim.duration_ms = 200;
 }
 
 NorthConfig *config_create_default(void)
@@ -110,39 +113,43 @@ NorthConfig *config_create_default(void)
     cfg->arena = arena;
     apply_defaults(cfg);
 
-    const char *default_specs[][2] = {{"Super+Return", "exec alacritty"},
-                                      {"Super+Q", "close"},
-                                      {"Super+Up", "maximize"},
-                                      {"Super+Down", "restore"},
-                                      {"Super+Left", "snap_left"},
-                                      {"Super+Right", "snap_right"},
-                                      {"Super+Alt+Left", "snap_top_left"},
-                                      {"Super+Alt+Right", "snap_top_right"},
-                                      {"Super+F", "fullscreen"},
-                                      {"Alt+Tab", "focus_next"},
-                                      {"Alt+Shift+Tab", "focus_prev"},
-                                      {"Super+Shift+R", "reload"},
-                                      {"Super+Shift+E", "exit"},
-                                      {"Super+1", "workspace 1"},
-                                      {"Super+2", "workspace 2"},
-                                      {"Super+3", "workspace 3"},
-                                      {"Super+4", "workspace 4"},
-                                      {"Super+5", "workspace 5"},
-                                      {"Super+6", "workspace 6"},
-                                      {"Super+7", "workspace 7"},
-                                      {"Super+8", "workspace 8"},
-                                      {"Super+9", "workspace 9"},
-                                      {"Super+Shift+1", "move_to_workspace 1"},
-                                      {"Super+Shift+2", "move_to_workspace 2"},
-                                      {"Super+Shift+3", "move_to_workspace 3"},
-                                      {"Super+Shift+4", "move_to_workspace 4"},
-                                      {"Super+Shift+5", "move_to_workspace 5"},
-                                      {"Super+Shift+6", "move_to_workspace 6"},
-                                      {"Super+Shift+7", "move_to_workspace 7"},
-                                      {"Super+Shift+8", "move_to_workspace 8"},
-                                      {"Super+Shift+9", "move_to_workspace 9"},
-                                      {"Super+Ctrl+Left", "workspace_prev"},
-                                      {"Super+Ctrl+Right", "workspace_next"}};
+    const char *default_specs[][2] = {
+        {"Super+Return", "exec alacritty"},
+        {"Super+Q", "close"},
+        {"Super+Up", "maximize"},
+        {"Super+Down", "restore"},
+        {"Super+Left", "snap_left"},
+        {"Super+Right", "snap_right"},
+        {"Super+Alt+Left", "snap_top_left"},
+        {"Super+Alt+Right", "snap_top_right"},
+        {"Super+F", "fullscreen"},
+        {"Alt+Tab", "focus_next"},
+        {"Alt+Shift+Tab", "focus_prev"},
+        {"Super+Shift+R", "reload"},
+        {"Super+Shift+E", "exit"},
+        {"Super+1", "workspace 1"},
+        {"Super+2", "workspace 2"},
+        {"Super+3", "workspace 3"},
+        {"Super+4", "workspace 4"},
+        {"Super+5", "workspace 5"},
+        {"Super+6", "workspace 6"},
+        {"Super+7", "workspace 7"},
+        {"Super+8", "workspace 8"},
+        {"Super+9", "workspace 9"},
+        {"Super+Shift+1", "move_to_workspace 1"},
+        {"Super+Shift+2", "move_to_workspace 2"},
+        {"Super+Shift+3", "move_to_workspace 3"},
+        {"Super+Shift+4", "move_to_workspace 4"},
+        {"Super+Shift+5", "move_to_workspace 5"},
+        {"Super+Shift+6", "move_to_workspace 6"},
+        {"Super+Shift+7", "move_to_workspace 7"},
+        {"Super+Shift+8", "move_to_workspace 8"},
+        {"Super+Shift+9", "move_to_workspace 9"},
+        {"Super+Ctrl+Left", "workspace_prev"},
+        {"Super+Ctrl+Right", "workspace_next"},
+        {"Print", "exec grim \"$HOME/Pictures/Screenshot_$(date +%Y-%m-%d_%H-%M-%S).png\""},
+        {"Shift+Print", "exec sh -c 'grim -g \"$(slurp)\" \"$HOME/Pictures/Screenshot_$(date "
+                        "+%Y-%m-%d_%H-%M-%S).png\"'"}};
 
     size_t default_bind_cap = sizeof(default_specs) / sizeof(default_specs[0]);
     cfg->binds = arena_push_array(&cfg->arena, NorthKeybind, default_bind_cap);
@@ -339,6 +346,29 @@ NorthConfigPtrResult config_load(const char *path)
                     }
                 } else {
                     cfg->workspaces.count = 9;
+                }
+            }
+        } else if (strcmp(e->section, "animation") == 0) {
+            if (strcmp(e->key, "enabled") == 0) {
+                if (e->value) {
+                    cfg->anim.enabled =
+                        (strcmp(e->value, "true") == 0 || strcmp(e->value, "1") == 0);
+                }
+            } else if (strcmp(e->key, "duration_ms") == 0) {
+                if (e->value) {
+                    char *end = NULL;
+                    long val = strtol(e->value, &end, 10);
+                    while (end && (*end == ' ' || *end == '\t')) {
+                        end++;
+                    }
+                    if (end && *end == '\0') {
+                        if (val < 0) {
+                            val = 0;
+                        } else if (val > 5000) {
+                            val = 5000;
+                        }
+                        cfg->anim.duration_ms = (int)val;
+                    }
                 }
             }
         } else if (strncmp(e->section, "output:", 7) == 0) {

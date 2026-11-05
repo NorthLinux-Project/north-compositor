@@ -7,6 +7,7 @@
 #include "shell/workspace.h"
 #include "shell/xdg.h"
 #include "util/log.h"
+#include "wlr-screencopy-unstable-v1-protocol.h"
 #include "xwayland/xwayland.h"
 
 #include <stdlib.h>
@@ -269,6 +270,19 @@ static void server_handle_output_mgr_test(struct wl_listener *listener, void *da
     output_manager_test(server, config);
 }
 
+void server_cancel_screencopy_frames(struct north_server *server)
+{
+    if (!server || !server->screencopy_manager) {
+        return;
+    }
+
+    struct wlr_screencopy_frame_v1 *frame, *tmp;
+    wl_list_for_each_safe(frame, tmp, &server->screencopy_manager->frames, link)
+    {
+        frame->box.x = -1;
+    }
+}
+
 void server_set_session_locked(struct north_server *server, bool locked)
 {
     wlr_scene_node_set_enabled(&server->layers.background->node, !locked);
@@ -278,6 +292,9 @@ void server_set_session_locked(struct north_server *server, bool locked)
     wlr_scene_node_set_enabled(&server->layers.fullscreen->node, !locked);
     wlr_scene_node_set_enabled(&server->layers.overlay->node, !locked);
     wlr_scene_node_set_enabled(&server->layers.popups->node, !locked);
+    if (locked) {
+        server_cancel_screencopy_frames(server);
+    }
 }
 
 BoolResult server_init(struct north_server *server, NorthConfig *config)
@@ -349,6 +366,7 @@ BoolResult server_init(struct north_server *server, NorthConfig *config)
 
     seat_init(&server->seat, server);
     switcher_init(server);
+    anim_manager_init(&server->anim_mgr, server);
 
     server->xdg_shell = wlr_xdg_shell_create(server->display, 6);
     server->xdg_decoration_manager = wlr_xdg_decoration_manager_v1_create(server->display);
@@ -438,6 +456,8 @@ BoolResult server_init(struct north_server *server, NorthConfig *config)
 
     server->image_copy_capture_manager =
         wlr_ext_image_copy_capture_manager_v1_create(server->display, 1);
+    server->ext_output_image_capture_source_manager =
+        wlr_ext_output_image_capture_source_manager_v1_create(server->display, 1);
 
     server->virtual_keyboard_manager = wlr_virtual_keyboard_manager_v1_create(server->display);
     server->new_virtual_keyboard.notify = server_handle_new_virtual_keyboard;
@@ -467,6 +487,9 @@ BoolResult server_start(struct north_server *server, const char **socket_out)
         return RESULT_ERR(Bool, ERROR_CREATE(ERR_IO, "failed to add Wayland display socket"));
     }
 
+    server->socket = socket;
+    north_ipc_init(&server->ipc, server);
+
     if (!wlr_backend_start(server->backend)) {
         return RESULT_ERR(Bool, ERROR_CREATE(ERR_INTERNAL, "failed starting wlr_backend"));
     }
@@ -492,6 +515,8 @@ void server_finish(struct north_server *server)
     if (server->virtual_pointer_manager) {
         wl_list_remove(&server->new_virtual_pointer.link);
     }
+    north_ipc_finish(&server->ipc);
+    anim_manager_finish(&server->anim_mgr);
     switcher_finish(server);
     if (server->output_manager) {
         wl_list_remove(&server->output_mgr_apply.link);

@@ -116,6 +116,7 @@ void switcher_init(struct north_server *server)
 void switcher_finish(struct north_server *server)
 {
     struct north_switcher *switcher = &server->switcher;
+    anim_cancel(&switcher->fade_anim);
     if (switcher->active) {
         switcher_cancel(server);
     }
@@ -214,6 +215,7 @@ void switcher_show(struct north_server *server, int direction)
 
     wlr_scene_node_set_enabled(&switcher->tree->node, true);
     switcher_render(switcher);
+    anim_switcher_fade(server, true);
 }
 
 void switcher_cycle(struct north_server *server, int direction)
@@ -248,6 +250,7 @@ void switcher_commit(struct north_server *server)
     }
 
     switcher->active = false;
+    anim_cancel(&switcher->fade_anim);
     server->switcher_just_committed = true;
     wlr_scene_node_set_enabled(&switcher->tree->node, false);
 
@@ -282,6 +285,7 @@ void switcher_cancel(struct north_server *server)
     }
 
     switcher->active = false;
+    anim_cancel(&switcher->fade_anim);
     server->switcher_just_committed = false;
     wlr_scene_node_set_enabled(&switcher->tree->node, false);
 

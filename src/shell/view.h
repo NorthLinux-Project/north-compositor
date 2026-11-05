@@ -1,6 +1,7 @@
 #ifndef VIEW_H
 #define VIEW_H
 
+#include "anim/animator.h"
 #include "decor/decoration.h"
 #include "shell/placement.h"
 #include "util/geom.h"
@@ -61,6 +62,11 @@ struct north_view {
     int rule_ssd;
     NorthBox geometry;
     NorthBox saved_geometry;
+
+    struct north_animator open_anim;
+    struct north_animator close_anim;
+    struct north_animator maximize_anim;
+    float alpha;
 
     struct wl_listener map;
     struct wl_listener unmap;

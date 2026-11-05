@@ -91,6 +91,7 @@ north_add_meson_dep(wlroots wlroots
     -Dbackends=drm,libinput
     -Dxwayland=enabled
     -Dcolor-management=enabled
+    --force-fallback-for=pixman
   DEPENDS
     dep_wayland
     dep_wayland_protocols

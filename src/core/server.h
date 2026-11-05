@@ -1,8 +1,10 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "anim/animator.h"
 #include "config/config.h"
 #include "input/seat.h"
+#include "ipc/ipc.h"
 #include "shell/placement.h"
 #include "shell/switcher.h"
 #include "util/error.h"
@@ -15,6 +17,7 @@
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor_shape_v1.h>
 #include <wlr/types/wlr_data_device.h>
+#include <wlr/types/wlr_ext_image_capture_source_v1.h>
 #include <wlr/types/wlr_ext_image_copy_capture_v1.h>
 #include <wlr/types/wlr_ext_workspace_v1.h>
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
@@ -76,6 +79,9 @@ struct north_server {
     struct north_switcher switcher;
     bool switcher_escape_pending;
     bool switcher_just_committed;
+    struct north_anim_manager anim_mgr;
+    const char *socket;
+    struct north_ipc_server ipc;
 
     struct wlr_xdg_shell *xdg_shell;
     struct wlr_xdg_decoration_manager_v1 *xdg_decoration_manager;
@@ -94,6 +100,7 @@ struct north_server {
     struct wlr_relative_pointer_manager_v1 *relative_pointer_manager;
     struct wlr_screencopy_manager_v1 *screencopy_manager;
     struct wlr_ext_image_copy_capture_manager_v1 *image_copy_capture_manager;
+    struct wlr_ext_output_image_capture_source_manager_v1 *ext_output_image_capture_source_manager;
     struct wlr_ext_workspace_manager_v1 *ext_workspace_manager;
     struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
     struct wlr_virtual_pointer_manager_v1 *virtual_pointer_manager;
@@ -140,5 +147,6 @@ void server_set_session_locked(struct north_server *server, bool locked);
 void server_set_active_constraint(struct north_server *server,
                                   struct wlr_pointer_constraint_v1 *constraint);
 void server_break_pointer_constraint(struct north_server *server);
+void server_cancel_screencopy_frames(struct north_server *server);
 
 #endif

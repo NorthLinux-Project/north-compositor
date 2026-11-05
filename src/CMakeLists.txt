@@ -26,6 +26,7 @@ target_link_libraries(north_core_pure
 add_library(north_core STATIC
   core/server.c
   output/output.c
+  anim/animator.c
   shell/view.c
   shell/xdg.c
   shell/layer.c
@@ -40,6 +41,8 @@ add_library(north_core STATIC
   input/keyboard.c
   input/pointer.c
   config/watch.c
+  ipc/ipc.c
+  ipc/json.c
 )
 target_include_directories(north_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(north_core
@@ -78,4 +81,13 @@ set_target_properties(north-compositor PROPERTIES
   INSTALL_RPATH "${NORTH_DEPS_LIB}"
   INSTALL_RPATH_USE_LINK_PATH TRUE
   LINK_FLAGS "-Wl,--disable-new-dtags"
+)
+
+add_executable(northctl tools/northctl.c ipc/json.c)
+target_include_directories(northctl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(northctl
+  PRIVATE
+    north_util
+    project_warnings
+    project_sanitizers
 )

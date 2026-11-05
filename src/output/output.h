@@ -1,6 +1,7 @@
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
+#include "anim/animator.h"
 #include "util/geom.h"
 
 #include <wayland-server-core.h>
@@ -24,6 +25,7 @@ struct north_output {
     struct wl_list workspaces;
     struct north_workspace *active_workspace;
     struct wlr_ext_workspace_group_handle_v1 *workspace_group;
+    struct north_animator workspace_anim;
 
     struct wl_listener frame;
     struct wl_listener request_state;

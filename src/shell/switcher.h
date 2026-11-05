@@ -1,6 +1,8 @@
 #ifndef SHELL_SWITCHER_H
 #define SHELL_SWITCHER_H
 
+#include "anim/animator.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -17,6 +19,7 @@ struct north_switcher {
     struct wlr_scene_tree *tree;
     struct wlr_scene_buffer *scene_buffer;
     struct north_cairo_buffer *cairo_buf;
+    struct north_animator fade_anim;
 
     bool active;
     uint32_t trigger_mods;

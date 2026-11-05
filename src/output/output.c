@@ -23,6 +23,10 @@ static void output_frame(struct wl_listener *listener, void *data)
         return;
     }
 
+    if (output->server->session_lock != NULL) {
+        server_cancel_screencopy_frames(output->server);
+    }
+
     struct wlr_output_state state;
     wlr_output_state_init(&state);
     if (!wlr_scene_output_build_state(scene_output, &state, NULL)) {
@@ -126,6 +130,8 @@ static void output_destroy(struct wl_listener *listener, void *data)
     }
 
     workspace_output_finish(output);
+
+    ipc_broadcast_output_event(server, output, "destroy");
 
     wl_list_remove(&output->frame.link);
     wl_list_remove(&output->request_state.link);
@@ -242,6 +248,7 @@ void output_handle_new(struct north_server *server, struct wlr_output *wlr_outpu
              wlr_output->height, scale);
 
     server_update_output_manager_config(server);
+    ipc_broadcast_output_event(server, output, "new");
 }
 
 NorthBox output_get_usable_box(struct north_output *output)

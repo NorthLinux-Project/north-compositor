@@ -82,6 +82,10 @@ static void xdg_handle_commit(struct wl_listener *listener, void *data)
         return;
     }
 
+    if (view->alpha < 1.0f || view->open_anim.running || view->close_anim.running) {
+        anim_view_set_opacity(view, view->alpha);
+    }
+
     struct wlr_box geom;
     view->impl->get_geometry(view, &geom);
 
@@ -132,6 +136,8 @@ static void xdg_handle_map(struct wl_listener *listener, void *data)
     view->geometry.height = geom.height > 0 ? geom.height : 480;
 
     struct north_server *server = view->server;
+    anim_view_open(server, view);
+
     struct north_output *out = output_at(server, server->seat.cursor->x, server->seat.cursor->y);
     if (!out && !wl_list_empty(&server->outputs)) {
         out = wl_container_of(server->outputs.next, out, link);
@@ -182,6 +188,8 @@ static void xdg_handle_map(struct wl_listener *listener, void *data)
     if (workspace_view_is_visible(view)) {
         view_focus(view);
     }
+
+    ipc_broadcast_window_event(server, view, "map");
 }
 
 static void xdg_handle_request_resize(struct wl_listener *listener, void *data)

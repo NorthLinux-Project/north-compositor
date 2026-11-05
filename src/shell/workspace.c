@@ -88,6 +88,8 @@ void workspace_output_finish(struct north_output *output)
         return;
     }
 
+    anim_cancel(&output->workspace_anim);
+
     struct north_workspace *ws, *tmp;
     wl_list_for_each_safe(ws, tmp, &output->workspaces, link)
     {
@@ -152,16 +154,21 @@ void workspace_switch(struct north_output *output, int index)
     }
 
     if (current) {
-        wlr_scene_node_set_enabled(&current->tree->node, false);
         if (current->handle) {
             wlr_ext_workspace_handle_v1_set_active(current->handle, false);
         }
     }
 
     output->active_workspace = target;
-    wlr_scene_node_set_enabled(&target->tree->node, true);
     if (target->handle) {
         wlr_ext_workspace_handle_v1_set_active(target->handle, true);
+    }
+
+    if (current) {
+        int direction = (target->index > current->index) ? 1 : -1;
+        anim_workspace_slide(output->server, output, current, target, direction);
+    } else {
+        wlr_scene_node_set_enabled(&target->tree->node, true);
     }
 
     struct north_server *server = output->server;
@@ -192,6 +199,8 @@ void workspace_switch(struct north_output *output, int index)
             }
         }
     }
+
+    ipc_broadcast_workspace_event(server, target, "focus");
 }
 
 void workspace_cycle(struct north_output *output, int step)

@@ -29,6 +29,7 @@ struct north_view *view_init_base(struct north_server *server, enum north_view_t
     }
     view->tree->node.data = view;
     view->rule_ssd = -1;
+    view->alpha = 1.0f;
 
     decoration_init(&view->decor, view);
     return view;
@@ -42,6 +43,10 @@ void view_handle_unmap(struct wl_listener *listener, void *data)
                             ? view->xdg_toplevel->title
                             : (view->xwayland_surface ? view->xwayland_surface->title : NULL);
     LOG_INFO("View unmapped: title='%s'", title ? title : "(null)");
+
+    anim_cancel(&view->open_anim);
+    anim_cancel(&view->close_anim);
+    anim_cancel(&view->maximize_anim);
 
     switcher_notify_view_unmap(view->server, view);
 
@@ -63,6 +68,7 @@ void view_handle_unmap(struct wl_listener *listener, void *data)
     }
 
     view->workspace = NULL;
+    ipc_broadcast_window_event(view->server, view, "unmap");
     view_focus_top_visible(view->server);
 }
 
@@ -151,6 +157,10 @@ void view_destroy(struct north_view *view)
 {
     if (!view)
         return;
+
+    anim_cancel(&view->open_anim);
+    anim_cancel(&view->close_anim);
+    anim_cancel(&view->maximize_anim);
 
     if (view->map.link.prev && view->map.link.next) {
         wl_list_remove(&view->map.link);
@@ -243,6 +253,7 @@ void view_focus(struct north_view *view)
         wlr_seat_keyboard_notify_enter(seat, view->surface, keyboard->keycodes,
                                        keyboard->num_keycodes, &keyboard->modifiers);
     }
+    ipc_broadcast_window_event(server, view, "focus");
 }
 
 void view_clear_focus(struct north_server *server)
@@ -413,6 +424,8 @@ void view_set_maximized(struct north_view *view, bool maximized)
         NorthBox usable = out ? output_get_usable_box(out) : (NorthBox){0, 0, 1920, 1080};
 
         int tb_h = view->decor.enabled ? view->server->config->decor.titlebar_height : 0;
+        NorthBox from = view->geometry;
+        NorthBox to = (NorthBox){usable.x, usable.y + tb_h, usable.width, usable.height - tb_h};
 
         view->state = VIEW_MAXIMIZED;
         view_set_position(view, usable.x, usable.y + tb_h);
@@ -430,7 +443,11 @@ void view_set_maximized(struct north_view *view, bool maximized)
 
         float scale = out && out->wlr_output ? out->wlr_output->scale : 1.0f;
         decoration_update(&view->decor, usable.width, usable.height - tb_h, scale);
+        anim_view_maximize(view->server, view, from, to);
     } else {
+        NorthBox from = view->geometry;
+        NorthBox to = view->saved_geometry;
+
         view->state = VIEW_NORMAL;
         view_set_position(view, view->saved_geometry.x, view->saved_geometry.y);
         view->geometry.width = view->saved_geometry.width;
@@ -454,6 +471,7 @@ void view_set_maximized(struct north_view *view, bool maximized)
         float scale = out && out->wlr_output ? out->wlr_output->scale : 1.0f;
         decoration_update(&view->decor, view->saved_geometry.width, view->saved_geometry.height,
                           scale);
+        anim_view_maximize(view->server, view, from, to);
     }
 }
 
@@ -579,6 +597,9 @@ void view_restore(struct north_view *view)
     } else if (view->state == VIEW_FULLSCREEN) {
         view_set_fullscreen(view, false);
     } else if (view->state == VIEW_SNAPPED) {
+        NorthBox from = view->geometry;
+        NorthBox to = view->saved_geometry;
+
         view->state = VIEW_NORMAL;
         view->snap_zone = SNAP_NONE;
 
@@ -594,12 +615,27 @@ void view_restore(struct north_view *view)
         float scale = out && out->wlr_output ? out->wlr_output->scale : 1.0f;
         decoration_update(&view->decor, view->saved_geometry.width, view->saved_geometry.height,
                           scale);
+        anim_view_maximize(view->server, view, from, to);
+    }
+}
+
+static void view_close_on_anim_finish(void *data)
+{
+    struct north_view *view = data;
+    if (view && view->impl && view->impl->send_close) {
+        view->impl->send_close(view);
     }
 }
 
 void view_close(struct north_view *view)
 {
-    if (view && view->impl && view->impl->send_close) {
+    if (!view || !view->impl || !view->impl->send_close) {
+        return;
+    }
+    if (view->server && view->server->config && view->server->config->anim.enabled &&
+        view->server->config->anim.duration_ms > 0) {
+        anim_view_close(view->server, view, view_close_on_anim_finish, view);
+    } else {
         view->impl->send_close(view);
     }
 }

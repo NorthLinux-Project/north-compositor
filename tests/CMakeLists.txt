@@ -56,6 +56,14 @@ add_unity_test(test_placement unit/test_placement.c
   LIBRARIES north_core_pure
 )
 
+add_unity_test(test_animator unit/test_animator.c
+  LIBRARIES north_core
+)
+
+add_unity_test(test_ipc_json unit/test_ipc_json.c
+  LIBRARIES north_core
+)
+
 # Integration tests (run against compiled north-compositor on headless backend)
 add_unity_test(test_headless_startup integration/test_headless_startup.c
   LIBRARIES north::wayland_client north_protocols
@@ -114,6 +122,21 @@ add_unity_test(test_window_rules integration/test_window_rules.c
 
 add_unity_test(test_switcher integration/test_switcher.c
   LIBRARIES north::wayland_client north_protocols north::xkbcommon
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_animations integration/test_animations.c
+  LIBRARIES north::wayland_client north_protocols north::xkbcommon
+  DEPENDS north-compositor
+)
+
+add_unity_test(test_ipc integration/test_ipc.c
+  LIBRARIES north::wayland_client north_protocols
+  DEPENDS north-compositor northctl
+)
+
+add_unity_test(test_screencopy integration/test_screencopy.c
+  LIBRARIES north::wayland_client north_protocols
   DEPENDS north-compositor
 )
 

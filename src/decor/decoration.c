@@ -87,16 +87,24 @@ void decoration_update(struct north_decoration *decor, int width, int height, fl
         decor->rendered_titlebar = NULL;
     }
 
+    float alpha = (decor->view) ? decor->view->alpha : 1.0f;
+
     decor->rendered_titlebar =
         render_titlebar(width, tb_h, decor->scale, decor->title, decor->active, maximized, dcfg);
     if (decor->rendered_titlebar) {
         wlr_scene_buffer_set_buffer(decor->titlebar_node, &decor->rendered_titlebar->base);
         wlr_scene_buffer_set_dest_size(decor->titlebar_node, width, tb_h);
         wlr_scene_node_set_position(&decor->titlebar_node->node, 0, -tb_h);
+        wlr_scene_buffer_set_opacity(decor->titlebar_node, alpha);
     }
 
     NorthColor border_col = decor->active ? dcfg->active_border : dcfg->inactive_border;
-    const float col[4] = {border_col.r, border_col.g, border_col.b, border_col.a};
+    const float col[4] = {
+        border_col.r * alpha,
+        border_col.g * alpha,
+        border_col.b * alpha,
+        border_col.a * alpha,
+    };
 
     wlr_scene_rect_set_color(decor->border_top, col);
     wlr_scene_rect_set_size(decor->border_top, width + 2 * bw, bw);

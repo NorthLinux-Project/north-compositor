@@ -109,3 +109,46 @@
 ### 4.4 Presentation Time & Tearing Control
 - **Presentation Time**: `wp_presentation` (Version 1, [`src/core/server.c`](../src/core/server.c)) for frame timestamp and refresh cycle tracking.
 - **Tearing Control**: `wp_tearing_control_manager_v1` (Version 1, [`src/core/server.c`](../src/core/server.c)) allowing fullscreen games to request asynchronous page-flips.
+
+### 4.5 Screen Capture & Desktop Portal Protocols
+- **wlroots Screencopy (`wlr-screencopy-unstable-v1`)**:
+  - Version: 3
+  - Interfaces: `zwlr_screencopy_manager_v1`, `zwlr_screencopy_frame_v1`
+  - Implementation: [`src/core/server.c`](../src/core/server.c), [`src/output/output.c`](../src/output/output.c)
+  - Full SHM and DMA-BUF copy, damage tracking, and cursor overlay support for `grim`, `slurp`, `wf-recorder`, `wayvnc`, and `xdg-desktop-portal-wlr`.
+  - Enforces strict session lock privacy: capture requests during active session lock (`ext-session-lock-v1`) fail immediately.
+- **Image Copy Capture (`ext-image-copy-capture-v1`) & Source Manager (`ext-image-capture-source-v1`)**:
+  - Version: 1
+  - Interfaces: `ext_image_copy_capture_manager_v1`, `ext_image_copy_capture_session_v1`, `ext_output_image_capture_source_manager_v1`
+  - Implementation: [`src/core/server.c`](../src/core/server.c)
+  - Upstream Wayland standard extension for capturing display outputs and desktop surfaces into shared buffers.
+
+---
+
+## 5. Unix Domain Socket IPC Protocol
+
+`north-compositor` implements a length-prefixed binary socket protocol over `$XDG_RUNTIME_DIR/north-ipc-$WAYLAND_DISPLAY.sock` (`NORTH_IPC_SOCK`).
+
+### 5.1 Packet Framing
+
+```
+[4 bytes: magic "NIPC"][4 bytes: uint32_t type][4 bytes: uint32_t payload_len][N bytes: JSON payload]
+```
+
+### 5.2 Message Types & Payloads
+
+| Opcode | Name | Direction | Payload Schema | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `0` | `NORTH_IPC_MSG_COMMAND` | Client -> Server | String (e.g. `"workspace 2"`) | Dispatches compositor command |
+| `1` | `NORTH_IPC_MSG_GET_WORKSPACES` | Client -> Server | None | Requests workspace array |
+| `2` | `NORTH_IPC_MSG_GET_VIEWS` | Client -> Server | None | Requests open windows & geometries |
+| `3` | `NORTH_IPC_MSG_GET_OUTPUTS` | Client -> Server | None | Requests output geometries & scales |
+| `4` | `NORTH_IPC_MSG_GET_VERSION` | Client -> Server | None | Requests version metadata |
+| `5` | `NORTH_IPC_MSG_SUBSCRIBE` | Client -> Server | `["workspace", "window", ...]` | Subscribes to real-time events |
+| `100` | `NORTH_IPC_REPLY_SUCCESS` | Server -> Client | JSON Object / Array | Successful command or query response |
+| `101` | `NORTH_IPC_REPLY_ERROR` | Server -> Client | `{"error": "message"}` | Error reply |
+| `200` | `NORTH_IPC_EVENT_WORKSPACE` | Server -> Client | `{"change": "...", "workspace": {...}}` | Workspace switch/focus notification |
+| `201` | `NORTH_IPC_EVENT_WINDOW` | Server -> Client | `{"change": "...", "window": {...}}` | Window map/unmap/focus notification |
+| `202` | `NORTH_IPC_EVENT_OUTPUT` | Server -> Client | `{"change": "...", "output": {...}}` | Display attach/detach notification |
+| `203` | `NORTH_IPC_EVENT_CONFIG` | Server -> Client | `{"change": "reload"}` | Config reload notification |
+

@@ -66,6 +66,11 @@ typedef struct {
 } NorthWorkspaceConfig;
 
 typedef struct {
+    bool enabled;
+    int duration_ms;
+} NorthAnimConfig;
+
+typedef struct {
     const char *name;
     const char *app_id;
     const char *title;
@@ -86,6 +91,7 @@ typedef struct north_config {
     NorthDecorConfig decor;
     NorthSnapConfig snap;
     NorthWorkspaceConfig workspaces;
+    NorthAnimConfig anim;
 
     NorthOutputConfig *outputs;
     size_t output_count;

@@ -142,7 +142,27 @@ Renders window titlebars, active/inactive borders, and drop shadows using Cairo 
 - Window close, maximize, and minimize buttons.
 - Configurable titlebar font rendering with Pango layout formatting.
 
-### 2.7 Utility & Core Primitives (`src/util/`)
+### 2.7 Animation Subsystem (`src/anim/`)
+
+Drives smooth, mathematically eased UI transitions using Wayland event loop timers (`wl_event_loop_add_timer`) and native wlroots scene graph operations.
+
+- **Ease-Out Cubic Interpolation**: Fast initial velocity that decelerates smoothly into rest state.
+- **Window Open & Close**: Buffer opacity fade-in/out via `wlr_scene_buffer_set_opacity` with synchronized border alpha updates.
+- **Workspace Slide**: Adjacent workspace scene nodes dynamically translate across the output usable width using `wlr_scene_node_set_position`.
+- **Maximize & Snapping Transitions**: Smooth position and bounding geometry interpolation.
+- **Alt+Tab Switcher**: Seamless alpha pulsing and overlay card reveals.
+
+### 2.8 IPC Subsystem & CLI (`src/ipc/`, `src/tools/`)
+
+Provides bidirectional Unix domain stream socket communication (`$XDG_RUNTIME_DIR/north-ipc-$WAYLAND_DISPLAY.sock`) for external scripting, window automation, and status bar synchronization (Waybar, eww).
+
+- **Binary Header Framing (`src/ipc/protocol.h`)**: Fixed 12-byte header (`magic: "NIPC"`, `uint32_t type`, `uint32_t payload_len`) preceding UTF-8 JSON payloads.
+- **Embedded Arena JSON (`src/ipc/json.c`)**: Zero-dependency string builder and parser backed by memory arenas (`Arena`).
+- **Command & Query Dispatch**: Introspects views, workspaces, and outputs; controls active focus, states, and configuration reload.
+- **Pub/Sub Event Streaming**: Pushes real-time `workspace`, `window`, `output`, and `config` events to subscribed clients.
+- **`northctl` CLI**: Standalone tool providing `get`, `msg`, `subscribe`, and `reload` subcommands with formatted JSON output.
+
+### 2.9 Utility & Core Primitives (`src/util/`)
 
 - **Memory Arena (`src/util/arena.c`)**:
   - Linear contiguous block allocator (`Arena`) providing $O(1)$ allocation and zero fragmentation.
